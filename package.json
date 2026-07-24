@@ -1,0 +1,27 @@
+{
+  "name": "teste_dti-1",
+  "version": "1.0.0",
+  "description": "teste_dti",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/GuilhermeFalante/teste_dti.git"
+  },
+  "keywords": [
+    "node",
+    "react"
+  ],
+  "author": "João Guilherme Falante Araújo",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/GuilhermeFalante/teste_dti/issues"
+  },
+  "homepage": "https://github.com/GuilhermeFalante/teste_dti#readme",
+  "dependencies": {
+    "@supabase/ssr": "^0.12.3",
+    "@supabase/supabase-js": "^2.110.8"
+  }
+}
