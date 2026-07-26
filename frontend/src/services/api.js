@@ -1,0 +1,35 @@
+const URL_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3333';
+
+async function requisitar(caminho, opcoes) {
+  const resposta = await fetch(`${URL_BASE}${caminho}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opcoes,
+  });
+
+  const corpo = await resposta.json().catch(() => null);
+
+  if (!resposta.ok) {
+    throw new Error(corpo?.erro ?? `Erro ${resposta.status} ao chamar ${caminho}`);
+  }
+
+  return corpo;
+}
+
+const api = {
+  listarDrones: () => requisitar('/drones/status'),
+  criarDrone: (dados) => requisitar('/drones', { method: 'POST', body: JSON.stringify(dados) }),
+  avancarEstadoDrone: (id, estado) =>
+    requisitar(`/drones/${id}/estado`, { method: 'PATCH', body: JSON.stringify({ estado }) }),
+
+  listarPedidos: () => requisitar('/pedidos'),
+  criarPedido: (dados) => requisitar('/pedidos', { method: 'POST', body: JSON.stringify(dados) }),
+
+  listarObstaculos: () => requisitar('/obstaculos'),
+  criarObstaculo: (dados) => requisitar('/obstaculos', { method: 'POST', body: JSON.stringify(dados) }),
+
+  listarFilaDeEntrega: () => requisitar('/entregas/fila'),
+  listarRotas: () => requisitar('/entregas/rota'),
+  alocarEntregas: () => requisitar('/entregas/alocar', { method: 'POST' }),
+};
+
+export default api;

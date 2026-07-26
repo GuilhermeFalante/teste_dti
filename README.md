@@ -1,5 +1,40 @@
 # Simulador de Encomendas em Drone
 
+## Como rodar o projeto
+
+Pré-requisitos: Node.js 18+ e um projeto Supabase (Postgres).
+
+### 1. Banco de dados (Supabase)
+
+Crie as tabelas `drones`, `pedidos`, `viagens`, `viagem_pedidos` e `obstaculos` no seu projeto
+Supabase (via **SQL Editor** do dashboard). O SQL das migrations não está versionado neste
+repositório — veja `backend/src/repositories/mapeadores.js` e os arquivos em
+`backend/src/repositories/` para a forma exata de cada tabela (colunas em `snake_case`: por
+exemplo `drones` tem `nome`, `capacidade_kg`, `alcance_km`, `velocidade_kmh`,
+`bateria_percentual`, `estado`, `pos_x`, `pos_y`, `criado_em`).
+
+### 2. Backend
+
+```bash
+cd backend
+npm install
+npm run dev             # sobe o servidor com reload em http://localhost:3333
+npm test                # roda os testes unitários do domínio
+```
+
+### 3. Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev      # sobe em http://localhost:5173, consumindo a API em http://localhost:3333
+```
+
+A URL da API é configurável em `frontend/.env` (`VITE_API_URL`, padrão `http://localhost:3333`).
+O frontend precisa do backend rodando para funcionar (todas as telas dependem da API).
+
+## Sobre o projeto
+
 Sistema que aloca pedidos de entrega em drones, respeitando capacidade (kg), alcance (km) e prioridade, minimizando o número de viagens.
 
 Contexto completo das regras em [docs/CHALLENGE.md](docs/CHALLENGE.md).
@@ -7,24 +42,7 @@ Contexto completo das regras em [docs/CHALLENGE.md](docs/CHALLENGE.md).
 ## Stack
 
 - **Backend**: Node.js + Express, em [backend/](backend/), com Supabase (Postgres) como persistência.
-- **Frontend**: ainda não implementado (próxima etapa).
-
-## Como rodar o projeto
-
-### 1. Aplicar as migrations no Supabase
-
-Rode, na ordem, o SQL de [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) e
-[supabase/migrations/0002_diferenciais.sql](supabase/migrations/0002_diferenciais.sql) no **SQL
-Editor** do dashboard do Supabase (não há CLI/MCP configurado neste ambiente).
-
-### 2. Passo a passo
-
-```bash
-cd backend
-npm install
-npm run dev      # sobe o servidor com reload em http://localhost:3333
-npm test         # roda os testes unitários do domínio
-```
+- **Frontend**: React + Vite, em [frontend/](frontend/), consumindo a API do backend.
 
 ## Arquitetura do backend
 
@@ -58,7 +76,7 @@ Dijkstra genérico usado para contornar obstáculos.
 | POST   | `/obstaculos`        | Cadastra uma zona de exclusão aérea circular (`nome`, `centroX`, `centroY`, `raioKm`) |
 | GET    | `/obstaculos`        | Lista os obstáculos cadastrados                                   |
 | POST   | `/entregas/alocar`   | Roda a alocação: agrupa pedidos pendentes em viagens de drones idle |
-| GET    | `/entregas/rota`     | Lista as viagens criadas, pedidos, distância e tempo estimado    |
+| GET    | `/entregas/rota`     | Lista as viagens criadas, pedidos (em ordem de entrega) e distância |
 | GET    | `/entregas/fila`     | Fila de pedidos pendentes, ordenada por prioridade + chegada     |
 
 ### Máquina de estados do drone
@@ -107,12 +125,30 @@ Implementada em `backend/src/domain/alocacaoService.js`:
   grafo é resolvido com **Dijkstra** (`domain/dijkstra.js` + `domain/geo.js`). Isso pode aumentar a
   distância real da viagem a ponto de estourar o alcance do drone.
 - **Tempo estimado de entrega**: cada drone tem `velocidadeKmH` (padrão 40 km/h, configurável na
-  criação). `POST /entregas/alocar` e `GET /entregas/rota` retornam `tempoEstimadoHoras` por
-  viagem (`distanciaTotal / velocidadeKmH`).
+  criação). `POST /entregas/alocar` retorna `tempoEstimadoHoras` por viagem
+  (`distanciaTotal / velocidadeKmH`) — não é persistido, então `GET /entregas/rota` só traz a
+  distância; o frontend recalcula o tempo ao exibir a lista de viagens.
 - **Fila de entrega**: `GET /entregas/fila` lista os pedidos pendentes ordenados por prioridade
   (alta > média > baixa) e, dentro da mesma prioridade, por ordem de chegada (FIFO). É uma visão
   diferente da heurística de alocação (que também prioriza peso para otimizar o aproveitamento dos
   drones) — aqui o objetivo é só mostrar a ordem de atendimento.
+
+## Frontend
+
+```
+frontend/src/
+  services/api.js   toda comunicação com a API isolada aqui (fetch); componentes não chamam fetch direto
+  hooks/             useDrones, usePedidos, useObstaculos, useEntregas — dados + loading/erro + ações
+  components/        DronesPanel, PedidosPanel, ObstaculosPanel, EntregasPanel, MapaEntregas
+```
+
+Telas (navegação por abas em `App.jsx`, sem router — escopo pequeno o suficiente para não precisar):
+
+- **Mapa**: SVG com a base (0,0), pedidos (coloridos por prioridade), obstáculos (círculos
+  tracejados) e as rotas das viagens já criadas.
+- **Entregas**: botão para rodar `POST /entregas/alocar`, fila de pendentes e tabela de viagens
+  (drone, distância, tempo estimado, ordem de entrega).
+- **Drones / Pedidos / Obstáculos**: formulário de cadastro + listagem de cada recurso.
 
 ## Uso de IA
 
