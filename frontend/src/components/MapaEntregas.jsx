@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 const LARGURA = 640;
 const ALTURA = 480;
 const PADDING = 24;
+const DURACAO_VOO = '3s';
 
 const CORES_PRIORIDADE = { alta: '#e5484d', media: '#f5a623', baixa: '#8f8f96' };
 const CORES_ROTA = ['#3b82f6', '#10b981', '#a855f7', '#f97316', '#06b6d4', '#ec4899'];
@@ -27,19 +28,98 @@ function calcularEscala(pedidos, obstaculos) {
   });
 }
 
-function MapaEntregas({ pedidos, obstaculos, rotas, viagemAnimando }) {
-  const projetar = useMemo(() => calcularEscala(pedidos, obstaculos), [pedidos, obstaculos]);
+function pontosParaCaminhoSvg(pontos) {
+  return pontos.map((ponto, indice) => `${indice === 0 ? 'M' : 'L'} ${ponto.cx} ${ponto.cy}`).join(' ');
+}
 
-  const caminhoAnimado = useMemo(() => {
-    if (!viagemAnimando) return null;
-    const percurso = [{ x: 0, y: 0 }, ...viagemAnimando.pontos, { x: 0, y: 0 }];
-    return percurso
-      .map((ponto, indice) => {
-        const { cx, cy } = projetar(ponto.x, ponto.y);
-        return `${indice === 0 ? 'M' : 'L'} ${cx} ${cy}`;
-      })
-      .join(' ');
-  }, [viagemAnimando, projetar]);
+// Pontos (já projetados em pixels) da rota de ida de uma viagem: base -> paradas na ordem de
+// entrega. A rota de volta é a mesma linha, percorrida ao contrário.
+function calcularPontosDaViagem(viagem, pedidos, projetar) {
+  const paradas = [...viagem.pedidos]
+    .sort((a, b) => a.ordemEntrega - b.ordemEntrega)
+    .map((item) => pedidos.find((p) => p.id === item.pedidoId))
+    .filter(Boolean)
+    .map((pedido) => projetar(pedido.clienteX, pedido.clienteY));
+
+  if (paradas.length === 0) return null;
+
+  const pontosIda = [projetar(0, 0), ...paradas];
+  return { pontosIda, pontosVolta: [...pontosIda].reverse() };
+}
+
+// Viagem mais recente do drone (qualquer status): ao entrar em "retornando" o backend já marca a
+// viagem como "concluida", então não dá pra filtrar só por "em_andamento" — precisamos dela ainda
+// pra saber por onde o drone deve voltar.
+function viagemMaisRecenteDoDrone(rotas, droneId) {
+  return [...rotas]
+    .filter((viagem) => viagem.droneId === droneId)
+    .sort((a, b) => new Date(b.iniciadaEm) - new Date(a.iniciadaEm))[0];
+}
+
+function IconeDrone({ drone, rotas, pedidos, projetar, indice }) {
+  const viagem = drone.estado === 'idle' ? null : viagemMaisRecenteDoDrone(rotas, drone.id);
+  const pontosViagem = viagem ? calcularPontosDaViagem(viagem, pedidos, projetar) : null;
+
+  const titulo = (
+    <title>
+      {drone.nome} — {drone.estado}
+    </title>
+  );
+
+  // Voando: anima ao longo da linha traçada (base -> paradas), na ordem de entrega.
+  if (pontosViagem && drone.estado === 'em_voo') {
+    const caminho = pontosParaCaminhoSvg(pontosViagem.pontosIda);
+    return (
+      <text fontSize="22" textAnchor="middle" dominantBaseline="middle">
+        🚁
+        <animateMotion dur={DURACAO_VOO} repeatCount="1" fill="freeze" path={caminho} />
+        {titulo}
+      </text>
+    );
+  }
+
+  // Retornando: anima pela mesma linha, no sentido contrário, até a base.
+  if (pontosViagem && drone.estado === 'retornando') {
+    const caminho = pontosParaCaminhoSvg(pontosViagem.pontosVolta);
+    return (
+      <text fontSize="22" textAnchor="middle" dominantBaseline="middle">
+        🚁
+        <animateMotion dur={DURACAO_VOO} repeatCount="1" fill="freeze" path={caminho} />
+        {titulo}
+      </text>
+    );
+  }
+
+  // Parado: entregando fica na última parada; idle/carregando ficam na base (idle sem viagem
+  // ganha um pequeno espalhamento ao redor da base, pra vários drones parados não empilharem).
+  let ponto;
+  if (drone.estado === 'entregando' && pontosViagem) {
+    ponto = pontosViagem.pontosIda[pontosViagem.pontosIda.length - 1];
+  } else if (!pontosViagem) {
+    const base = projetar(0, 0);
+    const angulo = (indice * 47 * Math.PI) / 180;
+    const raio = 14;
+    ponto = { cx: base.cx + raio * Math.cos(angulo), cy: base.cy + raio * Math.sin(angulo) };
+  } else {
+    ponto = projetar(0, 0);
+  }
+
+  return (
+    <text
+      className="icone-drone"
+      fontSize="22"
+      textAnchor="middle"
+      dominantBaseline="middle"
+      style={{ transform: `translate(${ponto.cx}px, ${ponto.cy}px)` }}
+    >
+      🚁
+      {titulo}
+    </text>
+  );
+}
+
+function MapaEntregas({ pedidos, obstaculos, rotas, drones }) {
+  const projetar = useMemo(() => calcularEscala(pedidos, obstaculos), [pedidos, obstaculos]);
 
   return (
     <section className="painel">
@@ -95,12 +175,19 @@ function MapaEntregas({ pedidos, obstaculos, rotas, viagemAnimando }) {
           );
         })}
 
-        {caminhoAnimado && (
-          <text fontSize="22" textAnchor="middle" dominantBaseline="middle">
-            🚁
-            <animateMotion dur="4s" repeatCount="1" fill="freeze" path={caminhoAnimado} />
-          </text>
-        )}
+        {drones.map((drone, indice) => (
+          // A key inclui o estado de propósito: quando o drone muda de estado (ex.: entregando ->
+          // retornando), React desmonta e remonta o ícone, o que reinicia o <animateMotion> do zero
+          // (só trocar o atributo "path" de um elemento já existente não reinicia a animação SMIL).
+          <IconeDrone
+            key={`${drone.id}-${drone.estado}`}
+            drone={drone}
+            rotas={rotas}
+            pedidos={pedidos}
+            projetar={projetar}
+            indice={indice}
+          />
+        ))}
       </svg>
 
       <div className="legenda">
@@ -119,6 +206,7 @@ function MapaEntregas({ pedidos, obstaculos, rotas, viagemAnimando }) {
         <span>
           <i className="quadrado" /> Base (0,0)
         </span>
+        <span>🚁 Drone (voa pela linha traçada até o destino e volta)</span>
       </div>
     </section>
   );

@@ -18,11 +18,8 @@ const ABAS = [
   { chave: 'obstaculos', titulo: 'Obstáculos' },
 ];
 
-const DURACAO_ANIMACAO_MS = 4200;
-
 function App() {
   const [abaAtiva, setAbaAtiva] = useState('mapa');
-  const [viagemAnimando, setViagemAnimando] = useState(null);
 
   const drones = useDrones();
   const pedidos = usePedidos();
@@ -35,17 +32,8 @@ function App() {
   }
 
   async function aoDespachar(dados) {
-    const resultado = await entregas.despachar(dados);
-
-    const pontosRota = resultado.pedidoIds
-      .map((id) => pedidos.pedidos.find((p) => p.id === id))
-      .filter(Boolean)
-      .map((pedido) => ({ x: pedido.clienteX, y: pedido.clienteY }));
-
-    setViagemAnimando({ pontos: pontosRota });
+    await entregas.despachar(dados);
     setAbaAtiva('mapa');
-    setTimeout(() => setViagemAnimando(null), DURACAO_ANIMACAO_MS);
-
     await Promise.all([drones.recarregar(), pedidos.recarregar()]);
   }
 
@@ -80,7 +68,7 @@ function App() {
             pedidos={pedidos.pedidos}
             obstaculos={obstaculos.obstaculos}
             rotas={entregas.rotas}
-            viagemAnimando={viagemAnimando}
+            drones={drones.drones}
           />
         )}
         {abaAtiva === 'entregas' && (

@@ -174,9 +174,15 @@ frontend/src/
 Telas (navegação por abas em `App.jsx`, sem router — escopo pequeno o suficiente para não precisar):
 
 - **Mapa**: SVG com a base (0,0), pedidos (coloridos por prioridade), obstáculos (círculos
-  tracejados) e as rotas das viagens já criadas. Ao despachar uma entrega (manual ou automática),
-  a aba troca para o Mapa automaticamente e mostra uma animação curta (`<animateMotion>`, ~4s) de
-  um drone (🚁) percorrendo a rota da base até os pedidos e de volta.
+  tracejados), as rotas das viagens já criadas (uma linha por viagem: base → paradas na ordem de
+  entrega → base) e um ícone (🚁) por drone. A posição do drone segue o estado real dele:
+  `idle`/`carregando` ficam na base, `entregando` fica na última parada, `retornando` volta pra
+  base. Ao entrar em `em_voo` ou `retornando`, o ícone **percorre a própria linha traçada da
+  viagem** (`<animateMotion>` sobre o mesmo path do polyline, ~3s, parada por parada — não pula
+  direto pro destino final quando há mais de um pedido na viagem); os demais estados usam uma
+  transição CSS simples (`transition: transform`) já que não envolvem trajeto. Avançar o estado do
+  drone (em Drones ou na tabela de viagens em Entregas) dispara essa animação. Ao despachar uma
+  entrega (manual ou automática), a aba troca para o Mapa automaticamente.
 - **Entregas**: botão para rodar a alocação automática (`POST /entregas/alocar`), um formulário de
   **despacho manual** (escolhe um drone `idle` e marca os pedidos pendentes que ele vai entregar,
   mostrando o peso selecionado em tempo real), fila de pendentes e tabela de viagens (drone,

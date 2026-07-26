@@ -128,6 +128,10 @@ td {
   background: var(--accent-bg);
 }
 
+.icone-drone {
+  transition: transform 2.5s ease-in-out;
+}
+
 .legenda {
   display: flex;
   gap: 16px;
