@@ -3,14 +3,17 @@ import useDrones from './hooks/useDrones';
 import usePedidos from './hooks/usePedidos';
 import useObstaculos from './hooks/useObstaculos';
 import useEntregas from './hooks/useEntregas';
+import useRelatorio from './hooks/useRelatorio';
 import DronesPanel from './components/DronesPanel';
 import PedidosPanel from './components/PedidosPanel';
 import ObstaculosPanel from './components/ObstaculosPanel';
 import EntregasPanel from './components/EntregasPanel';
 import MapaEntregas from './components/MapaEntregas';
+import DashboardPanel from './components/DashboardPanel';
 import './App.css';
 
 const ABAS = [
+  { chave: 'dashboard', titulo: 'Dashboard' },
   { chave: 'mapa', titulo: 'Mapa' },
   { chave: 'entregas', titulo: 'Entregas' },
   { chave: 'drones', titulo: 'Drones' },
@@ -19,12 +22,13 @@ const ABAS = [
 ];
 
 function App() {
-  const [abaAtiva, setAbaAtiva] = useState('mapa');
+  const [abaAtiva, setAbaAtiva] = useState('dashboard');
 
   const drones = useDrones();
   const pedidos = usePedidos();
   const obstaculos = useObstaculos();
   const entregas = useEntregas();
+  const relatorio = useRelatorio();
 
   async function aoAlocar() {
     await entregas.alocar();
@@ -63,6 +67,17 @@ function App() {
       </header>
 
       <main>
+        {abaAtiva === 'dashboard' && (
+          <DashboardPanel
+            relatorio={relatorio.relatorio}
+            carregando={relatorio.carregando}
+            erro={relatorio.erro}
+            pedidos={pedidos.pedidos}
+            obstaculos={obstaculos.obstaculos}
+            rotas={entregas.rotas}
+            drones={drones.drones}
+          />
+        )}
         {abaAtiva === 'mapa' && (
           <MapaEntregas
             pedidos={pedidos.pedidos}

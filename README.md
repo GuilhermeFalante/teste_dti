@@ -52,8 +52,9 @@ backend/src/
 `backend/tests/` cobre as regras principais do domínio: validação de pedidos e drones, transições
 da máquina de estados do drone, a heurística de alocação (casos de borda: capacidade estourada,
 alcance insuficiente, sem drones disponíveis, múltiplos pedidos na mesma viagem, bateria baixa
-reduzindo o alcance efetivo, obstáculo aumentando a distância real), a fila de entrega e o
-Dijkstra genérico usado para contornar obstáculos.
+reduzindo o alcance efetivo, obstáculo aumentando a distância real), o despacho manual, a fila de
+entrega, o Dijkstra genérico usado para contornar obstáculos e o cálculo do relatório (entregas
+realizadas, tempo médio, drone mais eficiente).
 
 ## Endpoints
 
@@ -75,6 +76,7 @@ Dijkstra genérico usado para contornar obstáculos.
 | POST   | `/entregas/despachar`| Despacho manual: escolhe `droneId` e `pedidoIds` explicitamente (veja abaixo) |
 | GET    | `/entregas/rota`     | Lista as viagens criadas, pedidos (em ordem de entrega) e distância |
 | GET    | `/entregas/fila`     | Fila de pedidos pendentes, ordenada por prioridade + chegada     |
+| GET    | `/relatorio`         | Entregas realizadas, tempo médio por entrega e drone mais eficiente |
 
 ### Máquina de estados do drone
 
@@ -116,6 +118,18 @@ esse efeito num `confirm()` antes de chamar a API.
 `em_rota` ou `entregue` já faz parte de uma viagem (`viagem_pedidos` referencia o pedido), então
 removê-lo deixaria a viagem com um registro órfão — a API responde 409 nesse caso. No frontend, a
 tabela de Pedidos só mostra o botão de remover para os pedidos pendentes.
+
+### Relatório
+
+`GET /relatorio` (`backend/src/domain/relatorio.js`, puro e testado isoladamente) calcula, a partir
+das viagens **concluídas** (`status = 'concluida'`, ou seja, o drone já voltou pra base):
+
+- **Entregas realizadas**: soma da quantidade de pedidos de cada viagem concluída.
+- **Tempo médio por entrega**: média de `distanciaTotalKm / velocidadeKmH` das viagens concluídas
+  (tempo estimado de voo por viagem — não há timestamp de entrega real por pedido individual).
+- **Drone mais eficiente**: o drone com mais pedidos entregues por km percorrido
+  (`pedidosEntregues / distanciaTotalKm`, somando todas as viagens concluídas dele) — favorece
+  quem entrega mais em menos distância, não só quem entrega mais.
 
 ### Fluxo de teste sugerido no Postman
 
@@ -167,12 +181,14 @@ Implementada em `backend/src/domain/alocacaoService.js`:
 ```
 frontend/src/
   services/api.js   toda comunicação com a API isolada aqui (fetch); componentes não chamam fetch direto
-  hooks/             useDrones, usePedidos, useObstaculos, useEntregas — dados + loading/erro + ações
-  components/        DronesPanel, PedidosPanel, ObstaculosPanel, EntregasPanel, MapaEntregas
+  hooks/             useDrones, usePedidos, useObstaculos, useEntregas, useRelatorio — dados + loading/erro + ações
+  components/        DronesPanel, PedidosPanel, ObstaculosPanel, EntregasPanel, MapaEntregas, DashboardPanel
 ```
 
 Telas (navegação por abas em `App.jsx`, sem router — escopo pequeno o suficiente para não precisar):
 
+- **Dashboard** (tela inicial): os três números do relatório (entregas realizadas, tempo médio por
+  entrega, drone mais eficiente) em cartões, com o mesmo Mapa embutido logo abaixo.
 - **Mapa**: SVG com a base (0,0), pedidos (coloridos por prioridade), obstáculos (círculos
   tracejados), as rotas das viagens já criadas (uma linha por viagem: base → paradas na ordem de
   entrega → base) e um ícone (🚁) por drone. A posição do drone segue o estado real dele:

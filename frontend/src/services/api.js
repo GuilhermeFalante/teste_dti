@@ -36,6 +36,8 @@ const api = {
   listarRotas: () => requisitar('/entregas/rota'),
   alocarEntregas: () => requisitar('/entregas/alocar', { method: 'POST' }),
   despacharEntrega: (dados) => requisitar('/entregas/despachar', { method: 'POST', body: JSON.stringify(dados) }),
+
+  buscarRelatorio: () => requisitar('/relatorio'),
 };
 
 export default api;

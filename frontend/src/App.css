@@ -132,6 +132,32 @@ td {
   transition: transform 2.5s ease-in-out;
 }
 
+.cartoes-relatorio {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cartao {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 20px;
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cartao-valor {
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.cartao-rotulo {
+  font-size: 0.85rem;
+}
+
 .legenda {
   display: flex;
   gap: 16px;
