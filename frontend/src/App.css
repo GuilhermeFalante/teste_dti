@@ -79,6 +79,24 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.acoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+button.botao-editar {
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+button.botao-remover {
+  background: #e5484d;
+  border-color: #e5484d;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

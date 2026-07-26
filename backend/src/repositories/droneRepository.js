@@ -47,6 +47,22 @@ function criarDroneRepository(supabase) {
       if (error) throw error;
       return droneDoRegistro(data);
     },
+
+    async atualizar(id, { nome, capacidadeKg, alcanceKm, velocidadeKmH }) {
+      const { data, error } = await supabase
+        .from('drones')
+        .update({ nome, capacidade_kg: capacidadeKg, alcance_km: alcanceKm, velocidade_kmh: velocidadeKmH })
+        .eq('id', id)
+        .select()
+        .single();
+      if (error) throw error;
+      return droneDoRegistro(data);
+    },
+
+    async remover(id) {
+      const { error } = await supabase.from('drones').delete().eq('id', id);
+      if (error) throw error;
+    },
   };
 }
 

@@ -18,4 +18,25 @@ async function listar(req, res, next) {
   }
 }
 
-module.exports = { criar, listar };
+async function atualizar(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { nome, centroX, centroY, raioKm } = req.body;
+    const obstaculo = await obstaculoService.atualizarObstaculo(id, { nome, centroX, centroY, raioKm });
+    res.json(obstaculo);
+  } catch (erro) {
+    next(erro);
+  }
+}
+
+async function remover(req, res, next) {
+  try {
+    const { id } = req.params;
+    await obstaculoService.removerObstaculo(id);
+    res.status(204).send();
+  } catch (erro) {
+    next(erro);
+  }
+}
+
+module.exports = { criar, listar, atualizar, remover };

@@ -18,6 +18,8 @@ async function requisitar(caminho, opcoes) {
 const api = {
   listarDrones: () => requisitar('/drones/status'),
   criarDrone: (dados) => requisitar('/drones', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarDrone: (id, dados) => requisitar(`/drones/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  removerDrone: (id) => requisitar(`/drones/${id}`, { method: 'DELETE' }),
   avancarEstadoDrone: (id, estado) =>
     requisitar(`/drones/${id}/estado`, { method: 'PATCH', body: JSON.stringify({ estado }) }),
 
@@ -26,6 +28,8 @@ const api = {
 
   listarObstaculos: () => requisitar('/obstaculos'),
   criarObstaculo: (dados) => requisitar('/obstaculos', { method: 'POST', body: JSON.stringify(dados) }),
+  atualizarObstaculo: (id, dados) => requisitar(`/obstaculos/${id}`, { method: 'PUT', body: JSON.stringify(dados) }),
+  removerObstaculo: (id) => requisitar(`/obstaculos/${id}`, { method: 'DELETE' }),
 
   listarFilaDeEntrega: () => requisitar('/entregas/fila'),
   listarRotas: () => requisitar('/entregas/rota'),

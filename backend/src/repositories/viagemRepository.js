@@ -27,6 +27,12 @@ function criarViagemRepository(supabase) {
       return data.map(viagemDoRegistro);
     },
 
+    async listarPorDrone(droneId) {
+      const { data, error } = await supabase.from('viagens').select('*').eq('drone_id', droneId);
+      if (error) throw error;
+      return data.map(viagemDoRegistro);
+    },
+
     async buscarPedidosDaViagem(viagemId) {
       const { data, error } = await supabase
         .from('viagem_pedidos')

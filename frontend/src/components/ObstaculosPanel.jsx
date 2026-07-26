@@ -3,20 +3,45 @@ import MensagemErro from './MensagemErro';
 
 const FORM_INICIAL = { nome: '', centroX: '', centroY: '', raioKm: '' };
 
-function ObstaculosPanel({ obstaculos, carregando, erro, criarObstaculo }) {
+function ObstaculosPanel({ obstaculos, carregando, erro, criarObstaculo, atualizarObstaculo, removerObstaculo }) {
   const [form, setForm] = useState(FORM_INICIAL);
+  const [editandoId, setEditandoId] = useState(null);
   const [erroFormulario, setErroFormulario] = useState(null);
+
+  function aoEditar(obstaculo) {
+    setEditandoId(obstaculo.id);
+    setForm({
+      nome: obstaculo.nome,
+      centroX: String(obstaculo.x),
+      centroY: String(obstaculo.y),
+      raioKm: String(obstaculo.raioKm),
+    });
+    setErroFormulario(null);
+  }
+
+  function cancelarEdicao() {
+    setEditandoId(null);
+    setForm(FORM_INICIAL);
+    setErroFormulario(null);
+  }
 
   async function aoEnviar(evento) {
     evento.preventDefault();
     setErroFormulario(null);
+    const dados = {
+      nome: form.nome,
+      centroX: Number(form.centroX),
+      centroY: Number(form.centroY),
+      raioKm: Number(form.raioKm),
+    };
+
     try {
-      await criarObstaculo({
-        nome: form.nome,
-        centroX: Number(form.centroX),
-        centroY: Number(form.centroY),
-        raioKm: Number(form.raioKm),
-      });
+      if (editandoId) {
+        await atualizarObstaculo(editandoId, dados);
+      } else {
+        await criarObstaculo(dados);
+      }
+      setEditandoId(null);
       setForm(FORM_INICIAL);
     } catch (erroCapturado) {
       setErroFormulario(erroCapturado.message);
@@ -59,7 +84,12 @@ function ObstaculosPanel({ obstaculos, carregando, erro, criarObstaculo }) {
           step="0.01"
           required
         />
-        <button type="submit">Cadastrar obstáculo</button>
+        <button type="submit">{editandoId ? 'Salvar alterações' : 'Cadastrar obstáculo'}</button>
+        {editandoId && (
+          <button type="button" onClick={cancelarEdicao}>
+            Cancelar
+          </button>
+        )}
       </form>
       <MensagemErro mensagem={erroFormulario} />
 
@@ -75,22 +105,57 @@ function ObstaculosPanel({ obstaculos, carregando, erro, criarObstaculo }) {
               <th>Nome</th>
               <th>Centro (X, Y)</th>
               <th>Raio</th>
+              <th>Ação</th>
             </tr>
           </thead>
           <tbody>
             {obstaculos.map((obstaculo) => (
-              <tr key={obstaculo.id}>
-                <td>{obstaculo.nome}</td>
-                <td>
-                  ({obstaculo.x}, {obstaculo.y})
-                </td>
-                <td>{obstaculo.raioKm} km</td>
-              </tr>
+              <LinhaObstaculo
+                key={obstaculo.id}
+                obstaculo={obstaculo}
+                aoEditar={aoEditar}
+                removerObstaculo={removerObstaculo}
+              />
             ))}
           </tbody>
         </table>
       )}
     </section>
+  );
+}
+
+function LinhaObstaculo({ obstaculo, aoEditar, removerObstaculo }) {
+  const [erroAcao, setErroAcao] = useState(null);
+
+  async function aoRemover() {
+    if (!window.confirm(`Remover o obstáculo "${obstaculo.nome}"?`)) return;
+    setErroAcao(null);
+    try {
+      await removerObstaculo(obstaculo.id);
+    } catch (erroCapturado) {
+      setErroAcao(erroCapturado.message);
+    }
+  }
+
+  return (
+    <tr>
+      <td>{obstaculo.nome}</td>
+      <td>
+        ({obstaculo.x}, {obstaculo.y})
+      </td>
+      <td>{obstaculo.raioKm} km</td>
+      <td>
+        <div className="acoes">
+          <button type="button" className="botao-editar" onClick={() => aoEditar(obstaculo)}>
+            ✏️ Editar
+          </button>
+          <button type="button" className="botao-remover" onClick={aoRemover}>
+            🗑️ Remover
+          </button>
+        </div>
+        <MensagemErro mensagem={erroAcao} />
+      </td>
+    </tr>
   );
 }
 

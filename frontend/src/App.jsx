@@ -62,6 +62,8 @@ function App() {
             carregando={drones.carregando}
             erro={drones.erro}
             criarDrone={drones.criarDrone}
+            atualizarDrone={drones.atualizarDrone}
+            removerDrone={drones.removerDrone}
             avancarEstadoDrone={drones.avancarEstadoDrone}
           />
         )}
@@ -79,6 +81,8 @@ function App() {
             carregando={obstaculos.carregando}
             erro={obstaculos.erro}
             criarObstaculo={obstaculos.criarObstaculo}
+            atualizarObstaculo={obstaculos.atualizarObstaculo}
+            removerObstaculo={obstaculos.removerObstaculo}
           />
         )}
       </main>

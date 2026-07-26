@@ -29,4 +29,25 @@ async function avancarEstado(req, res, next) {
   }
 }
 
-module.exports = { criar, listarStatus, avancarEstado };
+async function atualizar(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { nome, capacidadeKg, alcanceKm, velocidadeKmH } = req.body;
+    const drone = await droneService.atualizarDrone(id, { nome, capacidadeKg, alcanceKm, velocidadeKmH });
+    res.json(drone);
+  } catch (erro) {
+    next(erro);
+  }
+}
+
+async function remover(req, res, next) {
+  try {
+    const { id } = req.params;
+    await droneService.removerDrone(id);
+    res.status(204).send();
+  } catch (erro) {
+    next(erro);
+  }
+}
+
+module.exports = { criar, listarStatus, avancarEstado, atualizar, remover };

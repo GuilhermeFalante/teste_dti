@@ -11,7 +11,17 @@ function useObstaculos() {
     await recarregar();
   }
 
-  return { obstaculos, carregando, erro, recarregar, criarObstaculo };
+  async function atualizarObstaculo(id, dados) {
+    await api.atualizarObstaculo(id, dados);
+    await recarregar();
+  }
+
+  async function removerObstaculo(id) {
+    await api.removerObstaculo(id);
+    await recarregar();
+  }
+
+  return { obstaculos, carregando, erro, recarregar, criarObstaculo, atualizarObstaculo, removerObstaculo };
 }
 
 export default useObstaculos;

@@ -11,12 +11,22 @@ function useDrones() {
     await recarregar();
   }
 
+  async function atualizarDrone(id, dados) {
+    await api.atualizarDrone(id, dados);
+    await recarregar();
+  }
+
+  async function removerDrone(id) {
+    await api.removerDrone(id);
+    await recarregar();
+  }
+
   async function avancarEstadoDrone(id, estado) {
     await api.avancarEstadoDrone(id, estado);
     await recarregar();
   }
 
-  return { drones, carregando, erro, recarregar, criarDrone, avancarEstadoDrone };
+  return { drones, carregando, erro, recarregar, criarDrone, atualizarDrone, removerDrone, avancarEstadoDrone };
 }
 
 export default useDrones;

@@ -2,18 +2,9 @@
 
 ## Como rodar o projeto
 
-Pré-requisitos: Node.js 18+ e um projeto Supabase (Postgres).
+Pré-requisitos: Node.js.
 
-### 1. Banco de dados (Supabase)
-
-Crie as tabelas `drones`, `pedidos`, `viagens`, `viagem_pedidos` e `obstaculos` no seu projeto
-Supabase (via **SQL Editor** do dashboard). O SQL das migrations não está versionado neste
-repositório — veja `backend/src/repositories/mapeadores.js` e os arquivos em
-`backend/src/repositories/` para a forma exata de cada tabela (colunas em `snake_case`: por
-exemplo `drones` tem `nome`, `capacidade_kg`, `alcance_km`, `velocidade_kmh`,
-`bateria_percentual`, `estado`, `pos_x`, `pos_y`, `criado_em`).
-
-### 2. Backend
+### 1. Backend
 
 ```bash
 cd backend
@@ -22,7 +13,7 @@ npm run dev             # sobe o servidor com reload em http://localhost:3333
 npm test                # roda os testes unitários do domínio
 ```
 
-### 3. Frontend
+### 2. Frontend
 
 ```bash
 cd frontend
@@ -70,11 +61,15 @@ Dijkstra genérico usado para contornar obstáculos.
 |--------|----------------------|-------------------------------------------------------------------|
 | POST   | `/drones`            | Cadastra um drone (`nome`, `capacidadeKg`, `alcanceKm`, `velocidadeKmH?`) |
 | GET    | `/drones/status`     | Lista todos os drones, estado atual e bateria                    |
+| PUT    | `/drones/:id`        | Atualiza um drone (mesmos campos do cadastro)                    |
+| DELETE | `/drones/:id`        | Remove um drone em cascata (veja abaixo)                         |
 | PATCH  | `/drones/:id/estado` | Avança o drone para o próximo estado (`estado` no body)          |
 | POST   | `/pedidos`           | Cria um pedido (`clienteX`, `clienteY`, `pesoKg`, `prioridade`)   |
 | GET    | `/pedidos`           | Lista todos os pedidos                                            |
 | POST   | `/obstaculos`        | Cadastra uma zona de exclusão aérea circular (`nome`, `centroX`, `centroY`, `raioKm`) |
 | GET    | `/obstaculos`        | Lista os obstáculos cadastrados                                   |
+| PUT    | `/obstaculos/:id`    | Atualiza um obstáculo (mesmos campos do cadastro)                |
+| DELETE | `/obstaculos/:id`    | Remove um obstáculo                                               |
 | POST   | `/entregas/alocar`   | Roda a alocação: agrupa pedidos pendentes em viagens de drones idle |
 | GET    | `/entregas/rota`     | Lista as viagens criadas, pedidos (em ordem de entrega) e distância |
 | GET    | `/entregas/fila`     | Fila de pedidos pendentes, ordenada por prioridade + chegada     |
@@ -87,6 +82,15 @@ idle → carregando → em_voo → entregando → retornando → idle
 
 `POST /entregas/alocar` já move o drone de `idle` para `carregando` automaticamente ao montar a
 viagem. As demais transições são feitas manualmente via `PATCH /drones/:id/estado`.
+
+### Remoção de drone em cascata
+
+`DELETE /drones/:id` remove o drone e, em cascata (FK `on delete cascade` no banco — ver
+[supabase/migrations/0003_cascade_remocao_drone.sql](supabase/migrations/0003_cascade_remocao_drone.sql)),
+todas as viagens dele e os itens de `viagem_pedidos` associados. Antes de remover, o backend
+identifica os pedidos que estavam nessas viagens e devolve o status deles para `pendente`, para
+que fiquem disponíveis para realocação em outro drone — nenhum pedido é apagado. O frontend avisa
+esse efeito num `confirm()` antes de chamar a API.
 
 ### Fluxo de teste sugerido no Postman
 
@@ -148,7 +152,9 @@ Telas (navegação por abas em `App.jsx`, sem router — escopo pequeno o sufici
   tracejados) e as rotas das viagens já criadas.
 - **Entregas**: botão para rodar `POST /entregas/alocar`, fila de pendentes e tabela de viagens
   (drone, distância, tempo estimado, ordem de entrega).
-- **Drones / Pedidos / Obstáculos**: formulário de cadastro + listagem de cada recurso.
+- **Pedidos**: formulário de cadastro + listagem.
+- **Drones / Obstáculos**: formulário de cadastro + listagem, com edição (botão "Editar" carrega o
+  registro de volta no formulário) e remoção (com confirmação) por linha.
 
 ## Uso de IA
 
