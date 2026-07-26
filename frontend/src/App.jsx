@@ -18,8 +18,11 @@ const ABAS = [
   { chave: 'obstaculos', titulo: 'Obstáculos' },
 ];
 
+const DURACAO_ANIMACAO_MS = 4200;
+
 function App() {
   const [abaAtiva, setAbaAtiva] = useState('mapa');
+  const [viagemAnimando, setViagemAnimando] = useState(null);
 
   const drones = useDrones();
   const pedidos = usePedidos();
@@ -29,6 +32,28 @@ function App() {
   async function aoAlocar() {
     await entregas.alocar();
     await Promise.all([drones.recarregar(), pedidos.recarregar()]);
+  }
+
+  async function aoDespachar(dados) {
+    const resultado = await entregas.despachar(dados);
+
+    const pontosRota = resultado.pedidoIds
+      .map((id) => pedidos.pedidos.find((p) => p.id === id))
+      .filter(Boolean)
+      .map((pedido) => ({ x: pedido.clienteX, y: pedido.clienteY }));
+
+    setViagemAnimando({ pontos: pontosRota });
+    setAbaAtiva('mapa');
+    setTimeout(() => setViagemAnimando(null), DURACAO_ANIMACAO_MS);
+
+    await Promise.all([drones.recarregar(), pedidos.recarregar()]);
+  }
+
+  // Avançar o estado do drone também pode mudar o status dos pedidos da viagem dele
+  // (em_rota, entregue) e finalizar a viagem no backend — recarrega tudo para refletir isso.
+  async function aoAvancarEstadoDrone(droneId, estado) {
+    await drones.avancarEstadoDrone(droneId, estado);
+    await Promise.all([pedidos.recarregar(), entregas.recarregarTudo()]);
   }
 
   return (
@@ -51,10 +76,22 @@ function App() {
 
       <main>
         {abaAtiva === 'mapa' && (
-          <MapaEntregas pedidos={pedidos.pedidos} obstaculos={obstaculos.obstaculos} rotas={entregas.rotas} />
+          <MapaEntregas
+            pedidos={pedidos.pedidos}
+            obstaculos={obstaculos.obstaculos}
+            rotas={entregas.rotas}
+            viagemAnimando={viagemAnimando}
+          />
         )}
         {abaAtiva === 'entregas' && (
-          <EntregasPanel entregas={entregas} drones={drones.drones} pedidos={pedidos.pedidos} aoAlocar={aoAlocar} />
+          <EntregasPanel
+            entregas={entregas}
+            drones={drones.drones}
+            pedidos={pedidos.pedidos}
+            aoAlocar={aoAlocar}
+            aoDespachar={aoDespachar}
+            avancarEstadoDrone={aoAvancarEstadoDrone}
+          />
         )}
         {abaAtiva === 'drones' && (
           <DronesPanel
@@ -64,7 +101,7 @@ function App() {
             criarDrone={drones.criarDrone}
             atualizarDrone={drones.atualizarDrone}
             removerDrone={drones.removerDrone}
-            avancarEstadoDrone={drones.avancarEstadoDrone}
+            avancarEstadoDrone={aoAvancarEstadoDrone}
           />
         )}
         {abaAtiva === 'pedidos' && (
@@ -73,6 +110,7 @@ function App() {
             carregando={pedidos.carregando}
             erro={pedidos.erro}
             criarPedido={pedidos.criarPedido}
+            removerPedido={pedidos.removerPedido}
           />
         )}
         {abaAtiva === 'obstaculos' && (

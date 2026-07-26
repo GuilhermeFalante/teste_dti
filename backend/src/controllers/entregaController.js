@@ -8,6 +8,15 @@ async function alocar(req, res, next) {
   }
 }
 
+async function despachar(req, res, next) {
+  try {
+    const { droneId, pedidoIds } = req.body;
+    res.status(201).json(await entregaService.despacharManualmente({ droneId, pedidoIds }));
+  } catch (erro) {
+    next(erro);
+  }
+}
+
 async function rota(req, res, next) {
   try {
     res.json(await entregaService.listarRotas());
@@ -24,4 +33,4 @@ async function fila(req, res, next) {
   }
 }
 
-module.exports = { alocar, rota, fila };
+module.exports = { alocar, despachar, rota, fila };

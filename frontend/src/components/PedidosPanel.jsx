@@ -3,7 +3,7 @@ import MensagemErro from './MensagemErro';
 
 const FORM_INICIAL = { clienteX: '', clienteY: '', pesoKg: '', prioridade: 'media' };
 
-function PedidosPanel({ pedidos, carregando, erro, criarPedido }) {
+function PedidosPanel({ pedidos, carregando, erro, criarPedido, removerPedido }) {
   const [form, setForm] = useState(FORM_INICIAL);
   const [erroFormulario, setErroFormulario] = useState(null);
 
@@ -75,23 +75,53 @@ function PedidosPanel({ pedidos, carregando, erro, criarPedido }) {
               <th>Peso</th>
               <th>Prioridade</th>
               <th>Status</th>
+              <th>Ação</th>
             </tr>
           </thead>
           <tbody>
             {pedidos.map((pedido) => (
-              <tr key={pedido.id}>
-                <td>
-                  ({pedido.clienteX}, {pedido.clienteY})
-                </td>
-                <td>{pedido.pesoKg} kg</td>
-                <td>{pedido.prioridade}</td>
-                <td>{pedido.status}</td>
-              </tr>
+              <LinhaPedido key={pedido.id} pedido={pedido} removerPedido={removerPedido} />
             ))}
           </tbody>
         </table>
       )}
     </section>
+  );
+}
+
+function LinhaPedido({ pedido, removerPedido }) {
+  const [erroAcao, setErroAcao] = useState(null);
+  const podeRemover = pedido.status === 'pendente';
+
+  async function aoRemover() {
+    if (!window.confirm(`Remover o pedido de (${pedido.clienteX}, ${pedido.clienteY})?`)) return;
+    setErroAcao(null);
+    try {
+      await removerPedido(pedido.id);
+    } catch (erroCapturado) {
+      setErroAcao(erroCapturado.message);
+    }
+  }
+
+  return (
+    <tr>
+      <td>
+        ({pedido.clienteX}, {pedido.clienteY})
+      </td>
+      <td>{pedido.pesoKg} kg</td>
+      <td>{pedido.prioridade}</td>
+      <td>{pedido.status}</td>
+      <td>
+        {podeRemover ? (
+          <button type="button" className="botao-remover" onClick={aoRemover}>
+            🗑️ Remover
+          </button>
+        ) : (
+          <span title='Só pedidos "pendente" podem ser removidos'>—</span>
+        )}
+        <MensagemErro mensagem={erroAcao} />
+      </td>
+    </tr>
   );
 }
 

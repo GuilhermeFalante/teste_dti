@@ -66,11 +66,13 @@ Dijkstra genérico usado para contornar obstáculos.
 | PATCH  | `/drones/:id/estado` | Avança o drone para o próximo estado (`estado` no body)          |
 | POST   | `/pedidos`           | Cria um pedido (`clienteX`, `clienteY`, `pesoKg`, `prioridade`)   |
 | GET    | `/pedidos`           | Lista todos os pedidos                                            |
+| DELETE | `/pedidos/:id`       | Remove um pedido (só se estiver `pendente`, veja abaixo)         |
 | POST   | `/obstaculos`        | Cadastra uma zona de exclusão aérea circular (`nome`, `centroX`, `centroY`, `raioKm`) |
 | GET    | `/obstaculos`        | Lista os obstáculos cadastrados                                   |
 | PUT    | `/obstaculos/:id`    | Atualiza um obstáculo (mesmos campos do cadastro)                |
 | DELETE | `/obstaculos/:id`    | Remove um obstáculo                                               |
-| POST   | `/entregas/alocar`   | Roda a alocação: agrupa pedidos pendentes em viagens de drones idle |
+| POST   | `/entregas/alocar`   | Roda a alocação automática: agrupa pedidos pendentes em viagens de drones idle |
+| POST   | `/entregas/despachar`| Despacho manual: escolhe `droneId` e `pedidoIds` explicitamente (veja abaixo) |
 | GET    | `/entregas/rota`     | Lista as viagens criadas, pedidos (em ordem de entrega) e distância |
 | GET    | `/entregas/fila`     | Fila de pedidos pendentes, ordenada por prioridade + chegada     |
 
@@ -80,8 +82,24 @@ Dijkstra genérico usado para contornar obstáculos.
 idle → carregando → em_voo → entregando → retornando → idle
 ```
 
-`POST /entregas/alocar` já move o drone de `idle` para `carregando` automaticamente ao montar a
-viagem. As demais transições são feitas manualmente via `PATCH /drones/:id/estado`.
+`POST /entregas/alocar` e `POST /entregas/despachar` já movem o drone de `idle` para `carregando`
+automaticamente ao montar a viagem. As demais transições são feitas via `PATCH /drones/:id/estado`
+e cada uma delas também atualiza o status dos pedidos da viagem ativa desse drone:
+
+- `carregando → em_voo`: pedidos da viagem passam de `alocado` para `em_rota`.
+- `em_voo → entregando`: pedidos passam para `entregue`.
+- `entregando → retornando`: a viagem é marcada como `concluida`.
+- `retornando → idle`: drone livre de novo para uma nova alocação/despacho.
+
+### Despacho manual
+
+`POST /entregas/despachar` (`{ droneId, pedidoIds }`) monta uma viagem com o drone e os pedidos
+escolhidos manualmente, em vez de rodar a heurística automática — útil para decidir "esse drone
+específico entrega esses pedidos específicos". Valida as mesmas regras da alocação automática
+(peso ≤ capacidade, distância da rota ≤ alcance efetivo considerando bateria e obstáculos, drone
+precisa estar `idle`), rejeitando com 422/409 quando a combinação não é viável. A ordem de entrega
+retornada segue a mesma heurística de vizinho mais próximo usada na alocação automática — não é
+necessariamente a ordem em que os pedidos foram enviados no body.
 
 ### Remoção de drone em cascata
 
@@ -91,6 +109,13 @@ todas as viagens dele e os itens de `viagem_pedidos` associados. Antes de remove
 identifica os pedidos que estavam nessas viagens e devolve o status deles para `pendente`, para
 que fiquem disponíveis para realocação em outro drone — nenhum pedido é apagado. O frontend avisa
 esse efeito num `confirm()` antes de chamar a API.
+
+### Remoção de pedido
+
+`DELETE /pedidos/:id` só é permitido enquanto o pedido está `pendente`. Um pedido `alocado`,
+`em_rota` ou `entregue` já faz parte de uma viagem (`viagem_pedidos` referencia o pedido), então
+removê-lo deixaria a viagem com um registro órfão — a API responde 409 nesse caso. No frontend, a
+tabela de Pedidos só mostra o botão de remover para os pedidos pendentes.
 
 ### Fluxo de teste sugerido no Postman
 
@@ -149,9 +174,14 @@ frontend/src/
 Telas (navegação por abas em `App.jsx`, sem router — escopo pequeno o suficiente para não precisar):
 
 - **Mapa**: SVG com a base (0,0), pedidos (coloridos por prioridade), obstáculos (círculos
-  tracejados) e as rotas das viagens já criadas.
-- **Entregas**: botão para rodar `POST /entregas/alocar`, fila de pendentes e tabela de viagens
-  (drone, distância, tempo estimado, ordem de entrega).
+  tracejados) e as rotas das viagens já criadas. Ao despachar uma entrega (manual ou automática),
+  a aba troca para o Mapa automaticamente e mostra uma animação curta (`<animateMotion>`, ~4s) de
+  um drone (🚁) percorrendo a rota da base até os pedidos e de volta.
+- **Entregas**: botão para rodar a alocação automática (`POST /entregas/alocar`), um formulário de
+  **despacho manual** (escolhe um drone `idle` e marca os pedidos pendentes que ele vai entregar,
+  mostrando o peso selecionado em tempo real), fila de pendentes e tabela de viagens (drone,
+  distância, tempo estimado, ordem de entrega, e botões para avançar o estado do drone daquela
+  viagem — o que atualiza o status dos pedidos junto, como descrito acima).
 - **Pedidos**: formulário de cadastro + listagem.
 - **Drones / Obstáculos**: formulário de cadastro + listagem, com edição (botão "Editar" carrega o
   registro de volta no formulário) e remoção (com confirmação) por linha.

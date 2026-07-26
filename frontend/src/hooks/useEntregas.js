@@ -28,6 +28,12 @@ function useEntregas() {
     }
   }
 
+  async function despachar(dados) {
+    const resultado = await api.despacharEntrega(dados);
+    await Promise.all([fila.recarregar(), rotas.recarregar()]);
+    return resultado;
+  }
+
   return {
     fila: fila.dados,
     filaCarregando: fila.carregando,
@@ -40,6 +46,7 @@ function useEntregas() {
     resultadoAlocacao,
     erroAlocacao,
     alocar,
+    despachar,
   };
 }
 

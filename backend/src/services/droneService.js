@@ -12,14 +12,41 @@ async function listarStatusDrones() {
   return droneRepository.listarTodos();
 }
 
+// Transições do drone que também mudam o status dos pedidos da viagem ativa dele:
+// carregando -> em_voo (pedidos saem para entrega) e em_voo -> entregando (pedidos entregues).
+const STATUS_PEDIDO_POR_TRANSICAO = {
+  'carregando->em_voo': 'em_rota',
+  'em_voo->entregando': 'entregue',
+};
+
 async function avancarEstadoDrone(id, novoEstado) {
   const drone = await droneRepository.buscarPorId(id);
   if (!drone) {
     throw new ErroDominio('Drone não encontrado.', 404);
   }
 
-  const estadoValidado = transicionar(drone.estado, novoEstado);
-  return droneRepository.atualizarEstado(id, estadoValidado);
+  const estadoAnterior = drone.estado;
+  const estadoValidado = transicionar(estadoAnterior, novoEstado);
+  const droneAtualizado = await droneRepository.atualizarEstado(id, estadoValidado);
+
+  const transicao = `${estadoAnterior}->${estadoValidado}`;
+  const novoStatusPedido = STATUS_PEDIDO_POR_TRANSICAO[transicao];
+  if (novoStatusPedido) {
+    await atualizarPedidosDaViagemAtiva(id, novoStatusPedido);
+  } else if (transicao === 'entregando->retornando') {
+    const viagemAtiva = await viagemRepository.buscarViagemAtivaPorDrone(id);
+    if (viagemAtiva) await viagemRepository.finalizar(viagemAtiva.id);
+  }
+
+  return droneAtualizado;
+}
+
+async function atualizarPedidosDaViagemAtiva(droneId, status) {
+  const viagemAtiva = await viagemRepository.buscarViagemAtivaPorDrone(droneId);
+  if (!viagemAtiva) return;
+
+  const itens = await viagemRepository.buscarPedidosDaViagem(viagemAtiva.id);
+  await Promise.all(itens.map((item) => pedidoRepository.atualizarStatus(item.pedidoId, status)));
 }
 
 async function atualizarDrone(id, dados) {

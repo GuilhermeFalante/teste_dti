@@ -1,6 +1,7 @@
 const { RANK_PRIORIDADE } = require('./pedido');
 const { alcanceEfetivoKm } = require('./drone');
 const { calcularDistanciaRota, ordenarRotaVizinhoMaisProximo } = require('./geo');
+const { ErroDominio } = require('./erroDominio');
 
 const BASE_PADRAO = { x: 0, y: 0 };
 
@@ -94,4 +95,32 @@ function encontrarDroneParaNovaViagem(dronesDoMenorParaOMaior, viagens, pedido, 
   }) ?? null;
 }
 
-module.exports = { ordenarPedidosParaAlocacao, alocarPedidos };
+// Valida uma escolha manual de drone + pedidos (em vez da heurística automática de
+// alocarPedidos): mesmas regras de capacidade e alcance efetivo, mas para uma combinação
+// já decidida por quem está operando. Retorna a rota (ordem de entrega) e os totais.
+function validarDespachoManual(drone, pedidos, obstaculos = [], base = BASE_PADRAO) {
+  const pesoTotal = pedidos.reduce((soma, pedido) => soma + pedido.pesoKg, 0);
+  if (pesoTotal > drone.capacidadeKg) {
+    throw new ErroDominio(
+      `Peso total dos pedidos (${pesoTotal}kg) excede a capacidade do drone (${drone.capacidadeKg}kg).`,
+      422,
+    );
+  }
+
+  const pontos = pedidos.map((pedido) => ({ x: pedido.clienteX, y: pedido.clienteY, pedidoId: pedido.id }));
+  const rota = ordenarRotaVizinhoMaisProximo(pontos, base, obstaculos);
+  const distanciaTotal = calcularDistanciaRota(rota, base, obstaculos);
+  const alcanceDisponivel = alcanceEfetivoKm(drone);
+
+  if (distanciaTotal > alcanceDisponivel) {
+    throw new ErroDominio(
+      `Distância da rota (${distanciaTotal.toFixed(2)}km) excede o alcance disponível do drone ` +
+        `(${alcanceDisponivel.toFixed(2)}km, considerando a bateria atual em ${drone.bateriaPercentual}%).`,
+      422,
+    );
+  }
+
+  return { distanciaTotal, pesoTotal, pedidoIdsOrdenados: rota.map((ponto) => ponto.pedidoId) };
+}
+
+module.exports = { ordenarPedidosParaAlocacao, alocarPedidos, validarDespachoManual };

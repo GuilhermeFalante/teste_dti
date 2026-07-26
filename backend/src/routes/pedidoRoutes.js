@@ -5,5 +5,6 @@ const router = Router();
 
 router.post('/', pedidoController.criar);
 router.get('/', pedidoController.listar);
+router.delete('/:id', pedidoController.remover);
 
 module.exports = router;

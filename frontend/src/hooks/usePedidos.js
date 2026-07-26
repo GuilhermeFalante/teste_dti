@@ -11,7 +11,12 @@ function usePedidos() {
     await recarregar();
   }
 
-  return { pedidos, carregando, erro, recarregar, criarPedido };
+  async function removerPedido(id) {
+    await api.removerPedido(id);
+    await recarregar();
+  }
+
+  return { pedidos, carregando, erro, recarregar, criarPedido, removerPedido };
 }
 
 export default usePedidos;

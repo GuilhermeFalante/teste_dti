@@ -4,6 +4,7 @@ const entregaController = require('../controllers/entregaController');
 const router = Router();
 
 router.post('/alocar', entregaController.alocar);
+router.post('/despachar', entregaController.despachar);
 router.get('/rota', entregaController.rota);
 router.get('/fila', entregaController.fila);
 

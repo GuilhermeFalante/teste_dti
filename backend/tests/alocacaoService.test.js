@@ -1,4 +1,5 @@
-const { alocarPedidos, ordenarPedidosParaAlocacao } = require('../src/domain/alocacaoService');
+const { alocarPedidos, ordenarPedidosParaAlocacao, validarDespachoManual } = require('../src/domain/alocacaoService');
+const { ErroDominio } = require('../src/domain/erroDominio');
 
 function pedido(overrides) {
   return {
@@ -147,5 +148,47 @@ describe('alocarPedidos', () => {
 
     expect(resultado.viagens).toHaveLength(1);
     expect(resultado.viagens[0].distanciaTotal).toBeGreaterThan(20);
+  });
+});
+
+describe('validarDespachoManual', () => {
+  test('aceita uma combinação de pedidos dentro da capacidade e do alcance', () => {
+    const pedidos = [
+      pedido({ id: 'p1', clienteX: 3, clienteY: 0, pesoKg: 2 }),
+      pedido({ id: 'p2', clienteX: 4, clienteY: 0, pesoKg: 2 }),
+    ];
+    const droneEscolhido = drone({ id: 'd1', capacidadeKg: 5, alcanceKm: 20 });
+
+    const resultado = validarDespachoManual(droneEscolhido, pedidos);
+
+    expect(resultado.pesoTotal).toBe(4);
+    expect(resultado.pedidoIdsOrdenados.sort()).toEqual(['p1', 'p2']);
+    expect(resultado.distanciaTotal).toBeGreaterThan(0);
+  });
+
+  test('rejeita quando o peso total excede a capacidade do drone', () => {
+    const pedidos = [pedido({ id: 'p1', pesoKg: 4 }), pedido({ id: 'p2', pesoKg: 4 })];
+    const droneEscolhido = drone({ id: 'd1', capacidadeKg: 5 });
+
+    expect(() => validarDespachoManual(droneEscolhido, pedidos)).toThrow(ErroDominio);
+  });
+
+  test('rejeita quando a distância da rota excede o alcance efetivo (considerando bateria)', () => {
+    const pedidos = [pedido({ id: 'p1', clienteX: 8, clienteY: 0, pesoKg: 1 })];
+    const droneEscolhido = drone({ id: 'd1', alcanceKm: 10, bateriaPercentual: 50 }); // efetivo: 5km, viagem: 16km
+
+    expect(() => validarDespachoManual(droneEscolhido, pedidos)).toThrow(ErroDominio);
+  });
+
+  test('ordena os pedidos pela rota (vizinho mais próximo), não pela ordem de entrada', () => {
+    const pedidos = [
+      pedido({ id: 'longe', clienteX: 10, clienteY: 0, pesoKg: 1 }),
+      pedido({ id: 'perto', clienteX: 2, clienteY: 0, pesoKg: 1 }),
+    ];
+    const droneEscolhido = drone({ id: 'd1', capacidadeKg: 5, alcanceKm: 50 });
+
+    const resultado = validarDespachoManual(droneEscolhido, pedidos);
+
+    expect(resultado.pedidoIdsOrdenados).toEqual(['perto', 'longe']);
   });
 });

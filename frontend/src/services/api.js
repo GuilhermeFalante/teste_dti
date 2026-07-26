@@ -25,6 +25,7 @@ const api = {
 
   listarPedidos: () => requisitar('/pedidos'),
   criarPedido: (dados) => requisitar('/pedidos', { method: 'POST', body: JSON.stringify(dados) }),
+  removerPedido: (id) => requisitar(`/pedidos/${id}`, { method: 'DELETE' }),
 
   listarObstaculos: () => requisitar('/obstaculos'),
   criarObstaculo: (dados) => requisitar('/obstaculos', { method: 'POST', body: JSON.stringify(dados) }),
@@ -34,6 +35,7 @@ const api = {
   listarFilaDeEntrega: () => requisitar('/entregas/fila'),
   listarRotas: () => requisitar('/entregas/rota'),
   alocarEntregas: () => requisitar('/entregas/alocar', { method: 'POST' }),
+  despacharEntrega: (dados) => requisitar('/entregas/despachar', { method: 'POST', body: JSON.stringify(dados) }),
 };
 
 export default api;

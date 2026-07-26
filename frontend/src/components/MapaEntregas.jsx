@@ -27,8 +27,19 @@ function calcularEscala(pedidos, obstaculos) {
   });
 }
 
-function MapaEntregas({ pedidos, obstaculos, rotas }) {
+function MapaEntregas({ pedidos, obstaculos, rotas, viagemAnimando }) {
   const projetar = useMemo(() => calcularEscala(pedidos, obstaculos), [pedidos, obstaculos]);
+
+  const caminhoAnimado = useMemo(() => {
+    if (!viagemAnimando) return null;
+    const percurso = [{ x: 0, y: 0 }, ...viagemAnimando.pontos, { x: 0, y: 0 }];
+    return percurso
+      .map((ponto, indice) => {
+        const { cx, cy } = projetar(ponto.x, ponto.y);
+        return `${indice === 0 ? 'M' : 'L'} ${cx} ${cy}`;
+      })
+      .join(' ');
+  }, [viagemAnimando, projetar]);
 
   return (
     <section className="painel">
@@ -83,6 +94,13 @@ function MapaEntregas({ pedidos, obstaculos, rotas }) {
             </circle>
           );
         })}
+
+        {caminhoAnimado && (
+          <text fontSize="22" textAnchor="middle" dominantBaseline="middle">
+            🚁
+            <animateMotion dur="4s" repeatCount="1" fill="freeze" path={caminhoAnimado} />
+          </text>
+        )}
       </svg>
 
       <div className="legenda">

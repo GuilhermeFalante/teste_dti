@@ -36,6 +36,11 @@ function criarPedidoRepository(supabase) {
       if (error) throw error;
       return pedidoDoRegistro(data);
     },
+
+    async remover(id) {
+      const { error } = await supabase.from('pedidos').delete().eq('id', id);
+      if (error) throw error;
+    },
   };
 }
 
