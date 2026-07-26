@@ -1,19 +1,26 @@
 const { alocarPedidos } = require('../domain/alocacaoService');
 const { transicionar } = require('../domain/droneStateMachine');
-const { droneRepository, pedidoRepository, viagemRepository } = require('../repositories');
+const { consumirBateria } = require('../domain/drone');
+const { ordenarFilaDeEntrega } = require('../domain/filaDeEntrega');
+const { droneRepository, pedidoRepository, viagemRepository, obstaculoRepository } = require('../repositories');
 
 // Orquestra o passo principal do desafio: pega pedidos pendentes + drones livres,
-// roda a heurística de alocação (domínio puro) e persiste o resultado.
+// roda a heurística de alocação (domínio puro, já considerando bateria e obstáculos) e
+// persiste o resultado, incluindo o consumo de bateria e o tempo estimado de cada viagem.
 async function processarAlocacoes() {
-  const [pedidosPendentes, dronesDisponiveis] = await Promise.all([
+  const [pedidosPendentes, dronesDisponiveis, obstaculos] = await Promise.all([
     pedidoRepository.listarPendentes(),
     droneRepository.listarDisponiveis(),
+    obstaculoRepository.listarTodos(),
   ]);
 
-  const { viagens, naoAlocados } = alocarPedidos(pedidosPendentes, dronesDisponiveis);
+  const { viagens, naoAlocados } = alocarPedidos(pedidosPendentes, dronesDisponiveis, obstaculos);
+  const dronesPorId = new Map(dronesDisponiveis.map((drone) => [drone.id, drone]));
 
   const viagensCriadas = [];
   for (const viagem of viagens) {
+    const drone = dronesPorId.get(viagem.droneId);
+
     const viagemCriada = await viagemRepository.criar({
       droneId: viagem.droneId,
       pedidoIds: viagem.pedidoIds,
@@ -21,9 +28,18 @@ async function processarAlocacoes() {
     });
 
     await Promise.all(viagem.pedidoIds.map((pedidoId) => pedidoRepository.atualizarStatus(pedidoId, 'alocado')));
-    await droneRepository.atualizarEstado(viagem.droneId, transicionar('idle', 'carregando'));
 
-    viagensCriadas.push({ ...viagemCriada, pedidoIds: viagem.pedidoIds, pesoTotal: viagem.pesoTotal });
+    await droneRepository.atualizarAposDespacho(viagem.droneId, {
+      estado: transicionar(drone.estado, 'carregando'),
+      bateriaPercentual: consumirBateria(drone.bateriaPercentual, viagem.distanciaTotal, drone.alcanceKm),
+    });
+
+    viagensCriadas.push({
+      ...viagemCriada,
+      pedidoIds: viagem.pedidoIds,
+      pesoTotal: viagem.pesoTotal,
+      tempoEstimadoHoras: viagem.distanciaTotal / drone.velocidadeKmH,
+    });
   }
 
   return { viagensCriadas, naoAlocados };
@@ -39,4 +55,9 @@ async function listarRotas() {
   );
 }
 
-module.exports = { processarAlocacoes, listarRotas };
+async function listarFilaDeEntrega() {
+  const pedidosPendentes = await pedidoRepository.listarPendentes();
+  return ordenarFilaDeEntrega(pedidosPendentes);
+}
+
+module.exports = { processarAlocacoes, listarRotas, listarFilaDeEntrega };

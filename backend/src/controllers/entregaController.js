@@ -16,4 +16,12 @@ async function rota(req, res, next) {
   }
 }
 
-module.exports = { alocar, rota };
+async function fila(req, res, next) {
+  try {
+    res.json(await entregaService.listarFilaDeEntrega());
+  } catch (erro) {
+    next(erro);
+  }
+}
+
+module.exports = { alocar, rota, fila };

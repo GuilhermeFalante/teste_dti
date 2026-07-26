@@ -1,4 +1,5 @@
 const { RANK_PRIORIDADE } = require('./pedido');
+const { alcanceEfetivoKm } = require('./drone');
 const { calcularDistanciaRota, ordenarRotaVizinhoMaisProximo } = require('./geo');
 
 const BASE_PADRAO = { x: 0, y: 0 };
@@ -18,7 +19,9 @@ function ordenarPedidosParaAlocacao(pedidos) {
 // viagem já aberta antes de abrir uma nova, para minimizar o número total de viagens.
 // Cada drone participa de no máximo uma viagem por execução (viagens seguintes do mesmo
 // drone acontecem em rodadas futuras, quando ele estiver "idle" novamente).
-function alocarPedidos(pedidos, drones, base = BASE_PADRAO) {
+// O alcance considerado é o efetivo (afetado pela bateria atual), e a distância das rotas
+// já contorna eventuais obstáculos (zonas de exclusão aérea) informados.
+function alocarPedidos(pedidos, drones, obstaculos = [], base = BASE_PADRAO) {
   const dronesDoMenorParaOMaior = [...drones].sort((a, b) => a.capacidadeKg - b.capacidadeKg);
   const pedidosOrdenados = ordenarPedidosParaAlocacao(pedidos);
 
@@ -27,7 +30,7 @@ function alocarPedidos(pedidos, drones, base = BASE_PADRAO) {
 
   pedidosOrdenados.forEach((pedido) => {
     const ponto = { x: pedido.clienteX, y: pedido.clienteY };
-    const viagemComEspaco = encontrarViagemComEspaco(viagens, pedido, ponto, base);
+    const viagemComEspaco = encontrarViagemComEspaco(viagens, pedido, ponto, base, obstaculos);
 
     if (viagemComEspaco) {
       viagemComEspaco.pedidos.push(pedido);
@@ -36,20 +39,20 @@ function alocarPedidos(pedidos, drones, base = BASE_PADRAO) {
       return;
     }
 
-    const droneParaNovaViagem = encontrarDroneParaNovaViagem(dronesDoMenorParaOMaior, viagens, pedido, ponto, base);
+    const droneParaNovaViagem = encontrarDroneParaNovaViagem(dronesDoMenorParaOMaior, viagens, pedido, ponto, base, obstaculos);
     if (droneParaNovaViagem) {
       viagens.push({
         drone: droneParaNovaViagem,
         pedidos: [pedido],
         pesoTotal: pedido.pesoKg,
-        distanciaTotal: calcularDistanciaRota([ponto], base),
+        distanciaTotal: calcularDistanciaRota([ponto], base, obstaculos),
       });
       return;
     }
 
     naoAlocados.push({
       pedido,
-      motivo: 'Nenhum drone disponível suporta o peso e/ou o alcance necessário para este pedido.',
+      motivo: 'Nenhum drone disponível suporta o peso e/ou o alcance (considerando a bateria atual) necessário para este pedido.',
     });
   });
 
@@ -64,15 +67,15 @@ function alocarPedidos(pedidos, drones, base = BASE_PADRAO) {
   };
 }
 
-function encontrarViagemComEspaco(viagens, pedido, ponto, base) {
+function encontrarViagemComEspaco(viagens, pedido, ponto, base, obstaculos) {
   for (const viagem of viagens) {
     const novoPeso = viagem.pesoTotal + pedido.pesoKg;
     if (novoPeso > viagem.drone.capacidadeKg) continue;
 
     const pontosDaViagem = viagem.pedidos.map((p) => ({ x: p.clienteX, y: p.clienteY }));
-    const rota = ordenarRotaVizinhoMaisProximo([...pontosDaViagem, ponto], base);
-    const novaDistancia = calcularDistanciaRota(rota, base);
-    if (novaDistancia > viagem.drone.alcanceKm) continue;
+    const rota = ordenarRotaVizinhoMaisProximo([...pontosDaViagem, ponto], base, obstaculos);
+    const novaDistancia = calcularDistanciaRota(rota, base, obstaculos);
+    if (novaDistancia > alcanceEfetivoKm(viagem.drone)) continue;
 
     viagem.novaDistancia = novaDistancia;
     return viagem;
@@ -80,13 +83,13 @@ function encontrarViagemComEspaco(viagens, pedido, ponto, base) {
   return null;
 }
 
-function encontrarDroneParaNovaViagem(dronesDoMenorParaOMaior, viagens, pedido, ponto, base) {
-  const distanciaSolo = calcularDistanciaRota([ponto], base);
+function encontrarDroneParaNovaViagem(dronesDoMenorParaOMaior, viagens, pedido, ponto, base, obstaculos) {
+  const distanciaSolo = calcularDistanciaRota([ponto], base, obstaculos);
   return dronesDoMenorParaOMaior.find((drone) => {
     const jaUsadoNestaRodada = viagens.some((v) => v.drone.id === drone.id);
     if (jaUsadoNestaRodada) return false;
     if (pedido.pesoKg > drone.capacidadeKg) return false;
-    if (distanciaSolo > drone.alcanceKm) return false;
+    if (distanciaSolo > alcanceEfetivoKm(drone)) return false;
     return true;
   }) ?? null;
 }

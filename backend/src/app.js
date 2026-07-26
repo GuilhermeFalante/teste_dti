@@ -4,6 +4,7 @@ const cors = require('cors');
 const pedidoRoutes = require('./routes/pedidoRoutes');
 const droneRoutes = require('./routes/droneRoutes');
 const entregaRoutes = require('./routes/entregaRoutes');
+const obstaculoRoutes = require('./routes/obstaculoRoutes');
 const { ErroDominio } = require('./domain/erroDominio');
 
 const app = express();
@@ -14,6 +15,7 @@ app.use(express.json());
 app.use('/pedidos', pedidoRoutes);
 app.use('/drones', droneRoutes);
 app.use('/entregas', entregaRoutes);
+app.use('/obstaculos', obstaculoRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ erro: 'Rota não encontrada.' });

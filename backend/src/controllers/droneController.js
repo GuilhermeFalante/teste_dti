@@ -2,8 +2,8 @@ const droneService = require('../services/droneService');
 
 async function criar(req, res, next) {
   try {
-    const { nome, capacidadeKg, alcanceKm } = req.body;
-    const drone = await droneService.registrarDrone({ nome, capacidadeKg, alcanceKm });
+    const { nome, capacidadeKg, alcanceKm, velocidadeKmH } = req.body;
+    const drone = await droneService.registrarDrone({ nome, capacidadeKg, alcanceKm, velocidadeKmH });
     res.status(201).json(drone);
   } catch (erro) {
     next(erro);

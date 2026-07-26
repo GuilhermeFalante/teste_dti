@@ -17,6 +17,7 @@ function drone(overrides) {
     id: 'drone-1',
     capacidadeKg: 10,
     alcanceKm: 10,
+    bateriaPercentual: 100,
     ...overrides,
   };
 }
@@ -125,5 +126,26 @@ describe('alocarPedidos', () => {
     const resultado = alocarPedidos(pedidos, drones);
 
     expect(resultado.viagens[0].droneId).toBe('pequeno');
+  });
+
+  test('bateria baixa reduz o alcance efetivo e pode inviabilizar um pedido que caberia com bateria cheia', () => {
+    const pedidos = [pedido({ id: 'p1', clienteX: 8, clienteY: 0, pesoKg: 1 })];
+    const drones = [drone({ id: 'd1', alcanceKm: 10, bateriaPercentual: 50 })]; // alcance efetivo: 5km, viagem: 16km
+
+    const resultado = alocarPedidos(pedidos, drones);
+
+    expect(resultado.viagens).toHaveLength(0);
+    expect(resultado.naoAlocados[0].pedidoId).toBe('p1');
+  });
+
+  test('um obstáculo entre a base e o cliente aumenta a distância real da rota, podendo estourar o alcance', () => {
+    const pedidos = [pedido({ id: 'p1', clienteX: 10, clienteY: 0, pesoKg: 1 })];
+    const drones = [drone({ id: 'd1', alcanceKm: 21 })]; // ida e volta em linha reta: 20km, cabe com folga
+    const obstaculos = [{ x: 5, y: 0, raioKm: 1 }]; // bem no meio do caminho, mas pequeno o bastante pra contornar e ainda caber
+
+    const resultado = alocarPedidos(pedidos, drones, obstaculos);
+
+    expect(resultado.viagens).toHaveLength(1);
+    expect(resultado.viagens[0].distanciaTotal).toBeGreaterThan(20);
   });
 });

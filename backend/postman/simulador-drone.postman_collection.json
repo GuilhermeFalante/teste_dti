@@ -1,0 +1,291 @@
+{
+  "info": {
+    "name": "Simulador de Encomendas em Drone",
+    "description": "Coleção para testar a API do backend do desafio DTI. Fluxo sugerido: Criar Drone -> (opcional: Criar Obstáculo) -> Criar Pedido -> Alocar Entregas -> ver Rota/Status/Fila.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3333" },
+    { "key": "droneId", "value": "" },
+    { "key": "pedidoId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Drones",
+      "item": [
+        {
+          "name": "Criar drone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('droneId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Falcon-1\",\n  \"capacidadeKg\": 5,\n  \"alcanceKm\": 15,\n  \"velocidadeKmH\": 40\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/drones", "host": ["{{baseUrl}}"], "path": ["drones"] },
+            "description": "velocidadeKmH é opcional (default 40) — usada para calcular o tempo estimado de entrega."
+          }
+        },
+        {
+          "name": "Criar drone - peso/alcance inválido (erro esperado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"\",\n  \"capacidadeKg\": -1,\n  \"alcanceKm\": 0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/drones", "host": ["{{baseUrl}}"], "path": ["drones"] }
+          }
+        },
+        {
+          "name": "Listar status dos drones",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/drones/status", "host": ["{{baseUrl}}"], "path": ["drones", "status"] },
+            "description": "Inclui bateriaPercentual, atualizada após cada viagem alocada."
+          }
+        },
+        {
+          "name": "Avançar estado do drone (idle -> carregando)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"carregando\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drones/{{droneId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["drones", "{{droneId}}", "estado"]
+            }
+          }
+        },
+        {
+          "name": "Avançar estado do drone (em_voo)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"em_voo\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drones/{{droneId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["drones", "{{droneId}}", "estado"]
+            }
+          }
+        },
+        {
+          "name": "Avançar estado do drone (entregando)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"entregando\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drones/{{droneId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["drones", "{{droneId}}", "estado"]
+            }
+          }
+        },
+        {
+          "name": "Avançar estado do drone (retornando)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"retornando\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drones/{{droneId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["drones", "{{droneId}}", "estado"]
+            }
+          }
+        },
+        {
+          "name": "Avançar estado do drone (volta pra idle)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"idle\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drones/{{droneId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["drones", "{{droneId}}", "estado"]
+            }
+          }
+        },
+        {
+          "name": "Avançar estado do drone - transição inválida (erro esperado)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"estado\": \"entregando\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drones/{{droneId}}/estado",
+              "host": ["{{baseUrl}}"],
+              "path": ["drones", "{{droneId}}", "estado"]
+            },
+            "description": "Enviar isso logo após criar o drone (estado 'idle') deve dar 409, pois idle só pode ir para 'carregando'."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "Criar pedido",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('pedidoId', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteX\": 3,\n  \"clienteY\": 4,\n  \"pesoKg\": 2,\n  \"prioridade\": \"alta\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/pedidos", "host": ["{{baseUrl}}"], "path": ["pedidos"] }
+          }
+        },
+        {
+          "name": "Criar pedido - peso acima da capacidade de qualquer drone",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteX\": 1,\n  \"clienteY\": 1,\n  \"pesoKg\": 500,\n  \"prioridade\": \"baixa\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/pedidos", "host": ["{{baseUrl}}"], "path": ["pedidos"] },
+            "description": "Cria normalmente (peso não é validado contra drones aqui). O rejeite acontece na alocação: esse pedido deve cair em 'naoAlocados' no POST /entregas/alocar."
+          }
+        },
+        {
+          "name": "Criar pedido - prioridade inválida (erro esperado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clienteX\": 1,\n  \"clienteY\": 1,\n  \"pesoKg\": 1,\n  \"prioridade\": \"urgente\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/pedidos", "host": ["{{baseUrl}}"], "path": ["pedidos"] }
+          }
+        },
+        {
+          "name": "Listar pedidos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/pedidos", "host": ["{{baseUrl}}"], "path": ["pedidos"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Obstáculos",
+      "item": [
+        {
+          "name": "Criar obstáculo (zona de exclusão aérea)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Aeroporto\",\n  \"centroX\": 5,\n  \"centroY\": 0,\n  \"raioKm\": 2\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/obstaculos", "host": ["{{baseUrl}}"], "path": ["obstaculos"] },
+            "description": "Um obstáculo no meio do caminho entre a base (0,0) e um pedido faz a rota ser recalculada contornando-o, o que pode aumentar a distância real da viagem."
+          }
+        },
+        {
+          "name": "Criar obstáculo - raio inválido (erro esperado)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nome\": \"Zona X\",\n  \"centroX\": 0,\n  \"centroY\": 0,\n  \"raioKm\": 0\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/obstaculos", "host": ["{{baseUrl}}"], "path": ["obstaculos"] }
+          }
+        },
+        {
+          "name": "Listar obstáculos",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/obstaculos", "host": ["{{baseUrl}}"], "path": ["obstaculos"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Entregas",
+      "item": [
+        {
+          "name": "Fila de entrega (pendentes por prioridade + chegada)",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/entregas/fila", "host": ["{{baseUrl}}"], "path": ["entregas", "fila"] },
+            "description": "Roda antes de alocar, para ver a ordem em que os pedidos pendentes seriam atendidos."
+          }
+        },
+        {
+          "name": "Alocar pedidos pendentes em drones disponíveis",
+          "request": {
+            "method": "POST",
+            "url": { "raw": "{{baseUrl}}/entregas/alocar", "host": ["{{baseUrl}}"], "path": ["entregas", "alocar"] },
+            "description": "Pega todos os pedidos com status 'pendente' e drones com estado 'idle', considera bateria/obstáculos, roda a heurística de alocação e cria as viagens (com tempoEstimadoHoras). Rode depois de cadastrar drones e pedidos."
+          }
+        },
+        {
+          "name": "Ver rotas/viagens criadas",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/entregas/rota", "host": ["{{baseUrl}}"], "path": ["entregas", "rota"] }
+          }
+        }
+      ]
+    }
+  ]
+}

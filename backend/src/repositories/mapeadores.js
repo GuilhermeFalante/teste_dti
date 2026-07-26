@@ -4,6 +4,7 @@ function droneDoRegistro(registro) {
     nome: registro.nome,
     capacidadeKg: Number(registro.capacidade_kg),
     alcanceKm: Number(registro.alcance_km),
+    velocidadeKmH: Number(registro.velocidade_kmh),
     bateriaPercentual: Number(registro.bateria_percentual),
     estado: registro.estado,
     posX: Number(registro.pos_x),
@@ -35,4 +36,15 @@ function viagemDoRegistro(registro) {
   };
 }
 
-module.exports = { droneDoRegistro, pedidoDoRegistro, viagemDoRegistro };
+function obstaculoDoRegistro(registro) {
+  return {
+    id: registro.id,
+    nome: registro.nome,
+    x: Number(registro.centro_x),
+    y: Number(registro.centro_y),
+    raioKm: Number(registro.raio_km),
+    criadoEm: registro.criado_em,
+  };
+}
+
+module.exports = { droneDoRegistro, pedidoDoRegistro, viagemDoRegistro, obstaculoDoRegistro };

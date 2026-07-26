@@ -2,10 +2,10 @@ const { droneDoRegistro } = require('./mapeadores');
 
 function criarDroneRepository(supabase) {
   return {
-    async criar({ nome, capacidadeKg, alcanceKm }) {
+    async criar({ nome, capacidadeKg, alcanceKm, velocidadeKmH }) {
       const { data, error } = await supabase
         .from('drones')
-        .insert({ nome, capacidade_kg: capacidadeKg, alcance_km: alcanceKm })
+        .insert({ nome, capacidade_kg: capacidadeKg, alcance_km: alcanceKm, velocidade_kmh: velocidadeKmH })
         .select()
         .single();
 
@@ -33,6 +33,17 @@ function criarDroneRepository(supabase) {
 
     async atualizarEstado(id, estado) {
       const { data, error } = await supabase.from('drones').update({ estado }).eq('id', id).select().single();
+      if (error) throw error;
+      return droneDoRegistro(data);
+    },
+
+    async atualizarAposDespacho(id, { estado, bateriaPercentual }) {
+      const { data, error } = await supabase
+        .from('drones')
+        .update({ estado, bateria_percentual: bateriaPercentual })
+        .eq('id', id)
+        .select()
+        .single();
       if (error) throw error;
       return droneDoRegistro(data);
     },

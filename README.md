@@ -11,7 +11,13 @@ Contexto completo das regras em [docs/CHALLENGE.md](docs/CHALLENGE.md).
 
 ## Como rodar o projeto
 
-### 1. Passo a passo
+### 1. Aplicar as migrations no Supabase
+
+Rode, na ordem, o SQL de [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) e
+[supabase/migrations/0002_diferenciais.sql](supabase/migrations/0002_diferenciais.sql) no **SQL
+Editor** do dashboard do Supabase (não há CLI/MCP configurado neste ambiente).
+
+### 2. Passo a passo
 
 ```bash
 cd backend
@@ -34,21 +40,26 @@ backend/src/
 
 ## Testes
 
-`backend/tests/` cobre as regras principais do domínio: validação de pedidos, transições da
-máquina de estados do drone e a heurística de alocação (casos de borda: capacidade estourada,
-alcance insuficiente, sem drones disponíveis, múltiplos pedidos na mesma viagem).
+`backend/tests/` cobre as regras principais do domínio: validação de pedidos e drones, transições
+da máquina de estados do drone, a heurística de alocação (casos de borda: capacidade estourada,
+alcance insuficiente, sem drones disponíveis, múltiplos pedidos na mesma viagem, bateria baixa
+reduzindo o alcance efetivo, obstáculo aumentando a distância real), a fila de entrega e o
+Dijkstra genérico usado para contornar obstáculos.
 
 ## Endpoints
 
 | Método | Rota                | Descrição                                                        |
 |--------|----------------------|-------------------------------------------------------------------|
-| POST   | `/drones`            | Cadastra um drone (`nome`, `capacidadeKg`, `alcanceKm`)           |
-| GET    | `/drones/status`     | Lista todos os drones e seu estado atual                         |
+| POST   | `/drones`            | Cadastra um drone (`nome`, `capacidadeKg`, `alcanceKm`, `velocidadeKmH?`) |
+| GET    | `/drones/status`     | Lista todos os drones, estado atual e bateria                    |
 | PATCH  | `/drones/:id/estado` | Avança o drone para o próximo estado (`estado` no body)          |
 | POST   | `/pedidos`           | Cria um pedido (`clienteX`, `clienteY`, `pesoKg`, `prioridade`)   |
 | GET    | `/pedidos`           | Lista todos os pedidos                                            |
+| POST   | `/obstaculos`        | Cadastra uma zona de exclusão aérea circular (`nome`, `centroX`, `centroY`, `raioKm`) |
+| GET    | `/obstaculos`        | Lista os obstáculos cadastrados                                   |
 | POST   | `/entregas/alocar`   | Roda a alocação: agrupa pedidos pendentes em viagens de drones idle |
-| GET    | `/entregas/rota`     | Lista as viagens criadas e os pedidos de cada uma                |
+| GET    | `/entregas/rota`     | Lista as viagens criadas, pedidos, distância e tempo estimado    |
+| GET    | `/entregas/fila`     | Fila de pedidos pendentes, ordenada por prioridade + chegada     |
 
 ### Máquina de estados do drone
 
@@ -83,8 +94,29 @@ Implementada em `backend/src/domain/alocacaoService.js`:
 5. A distância de uma viagem com múltiplos pedidos é calculada com uma heurística de vizinho mais
    próximo (não é TSP ótimo, mas evita rotas em zig-zag óbvias) partindo e retornando à base (0,0).
 
+## Funcionalidades avançadas
+
+- **Bateria**: cada drone tem `bateriaPercentual` (0–100). O alcance efetivamente utilizável numa
+  alocação é `alcanceKm * (bateriaPercentual / 100)` — com metade da bateria, só metade do alcance
+  nominal é considerado. Ao despachar uma viagem, a bateria é decrementada proporcionalmente à
+  distância percorrida (percorrer o alcance nominal inteiro gasta 100%). Ver `domain/drone.js`.
+- **Obstáculos (zonas de exclusão aérea)**: cadastrados como círculos (`centroX`, `centroY`,
+  `raioKm`) via `POST /obstaculos`. Ao calcular a distância de uma rota, se o caminho reto entre
+  dois pontos cruzar algum obstáculo, o trajeto é recalculado contornando-o: um visibility graph é
+  montado (base, destino e pontos ao redor da borda de cada obstáculo) e o menor caminho nesse
+  grafo é resolvido com **Dijkstra** (`domain/dijkstra.js` + `domain/geo.js`). Isso pode aumentar a
+  distância real da viagem a ponto de estourar o alcance do drone.
+- **Tempo estimado de entrega**: cada drone tem `velocidadeKmH` (padrão 40 km/h, configurável na
+  criação). `POST /entregas/alocar` e `GET /entregas/rota` retornam `tempoEstimadoHoras` por
+  viagem (`distanciaTotal / velocidadeKmH`).
+- **Fila de entrega**: `GET /entregas/fila` lista os pedidos pendentes ordenados por prioridade
+  (alta > média > baixa) e, dentro da mesma prioridade, por ordem de chegada (FIFO). É uma visão
+  diferente da heurística de alocação (que também prioriza peso para otimizar o aproveitamento dos
+  drones) — aqui o objetivo é só mostrar a ordem de atendimento.
+
 ## Uso de IA
 
+Backend desenvolvido com apoio do Claude Code. Criei um agente próprio
 ([.claude/agents/fullstack-dev.md](.claude/agents/fullstack-dev.md)) com as convenções e
 arquitetura deste repositório, para reduzir erros e manter a IA consistente com o padrão do
 projeto. As regras de negócio usadas estão em [docs/CHALLENGE.md](docs/CHALLENGE.md).
