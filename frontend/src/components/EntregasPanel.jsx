@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { PROXIMOS_ESTADOS } from '../domain/estadosDrone';
+import { RESUMO_ESTADO_DRONE, rotular } from '../domain/rotulos';
 import MensagemErro from './MensagemErro';
+import Badge from './Badge';
 
 function EntregasPanel({ entregas, drones, pedidos, aoAlocar, aoDespachar, avancarEstadoDrone }) {
   const { fila, filaCarregando, filaErro, rotas, rotasCarregando, rotasErro, alocando, resultadoAlocacao, erroAlocacao } =
@@ -47,7 +49,8 @@ function EntregasPanel({ entregas, drones, pedidos, aoAlocar, aoDespachar, avanc
         <ol>
           {fila.map((pedido) => (
             <li key={pedido.id}>
-              {pedido.prioridade} — ({pedido.clienteX}, {pedido.clienteY}), {pedido.pesoKg}kg
+              <Badge categoria="prioridade" valor={pedido.prioridade} /> ({pedido.clienteX}, {pedido.clienteY}),{' '}
+              {pedido.pesoKg}kg
             </li>
           ))}
         </ol>
@@ -105,8 +108,10 @@ function LinhaViagem({ viagem, drone, nomeDrone, infoPedido, avancarEstadoDrone 
   return (
     <tr>
       <td>{nomeDrone}</td>
-      <td>{viagem.status}</td>
-      <td>{drone?.estado ?? '—'}</td>
+      <td>
+        <Badge categoria="statusViagem" valor={viagem.status} />
+      </td>
+      <td>{drone ? <Badge categoria="estadoDrone" valor={drone.estado} /> : '—'}</td>
       <td>{viagem.distanciaTotalKm?.toFixed(2)} km</td>
       <td>{tempoEstimadoHoras !== null ? `${(tempoEstimadoHoras * 60).toFixed(0)} min` : '—'}</td>
       <td>
@@ -123,7 +128,7 @@ function LinhaViagem({ viagem, drone, nomeDrone, infoPedido, avancarEstadoDrone 
           {viagem.status === 'em_andamento' &&
             proximosEstados.map((proximoEstado) => (
               <button key={proximoEstado} type="button" onClick={() => aoAvancar(proximoEstado)}>
-                → {proximoEstado}
+                → {rotular(RESUMO_ESTADO_DRONE, proximoEstado)}
               </button>
             ))}
         </div>
@@ -169,7 +174,7 @@ function DespachoManual({ dronesIdle, fila, aoDespachar }) {
       <h3>Despacho manual</h3>
       <p>Escolha o drone e os pedidos que ele vai entregar, em vez de rodar a alocação automática.</p>
 
-      {dronesIdle.length === 0 && <p>Nenhum drone disponível (precisa estar "idle").</p>}
+      {dronesIdle.length === 0 && <p>Nenhum drone disponível no momento.</p>}
       {pedidosPendentes.length === 0 && <p>Nenhum pedido pendente para despachar.</p>}
 
       {dronesIdle.length > 0 && pedidosPendentes.length > 0 && (
@@ -197,7 +202,8 @@ function DespachoManual({ dronesIdle, fila, aoDespachar }) {
                   checked={pedidoIds.includes(pedido.id)}
                   onChange={() => alternarPedido(pedido.id)}
                 />
-                {pedido.prioridade} — ({pedido.clienteX}, {pedido.clienteY}), {pedido.pesoKg}kg
+                <Badge categoria="prioridade" valor={pedido.prioridade} /> ({pedido.clienteX}, {pedido.clienteY}),{' '}
+                {pedido.pesoKg}kg
               </label>
             ))}
           </fieldset>

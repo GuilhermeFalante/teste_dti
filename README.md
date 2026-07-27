@@ -85,13 +85,28 @@ idle → carregando → em_voo → entregando → retornando → idle
 ```
 
 `POST /entregas/alocar` e `POST /entregas/despachar` já movem o drone de `idle` para `carregando`
-automaticamente ao montar a viagem. As demais transições são feitas via `PATCH /drones/:id/estado`
-e cada uma delas também atualiza o status dos pedidos da viagem ativa desse drone:
+ao montar a viagem. **Daí em diante o ciclo avança sozinho**, simulado por
+`backend/src/services/simulacaoVooService.js`: o backend agenda, em background (sem bloquear a
+resposta HTTP), as próximas transições via `setTimeout`, chamando a mesma lógica de
+`PATCH /drones/:id/estado` internamente — não precisa clicar em nada pra ver o pedido e o drone
+mudando de status. `PATCH /drones/:id/estado` continua disponível pra quem quiser forçar/pular uma
+transição manualmente (a UI ainda mostra os botões).
+
+Cada transição também atualiza o status dos pedidos da viagem ativa desse drone:
 
 - `carregando → em_voo`: pedidos da viagem passam de `alocado` para `em_rota`.
 - `em_voo → entregando`: pedidos passam para `entregue`.
 - `entregando → retornando`: a viagem é marcada como `concluida`.
 - `retornando → idle`: drone livre de novo para uma nova alocação/despacho.
+
+**Tempo simulado**: 1 hora de voo (`distância / velocidadeKmH`) equivale a 60 segundos reais,
+limitado entre 3s e 20s por trecho (pra dar pra acompanhar numa demonstração sem esperar minutos
+reais). `carregando` e `entregando` duram 3s fixos. Se alguém avançar o estado manualmente
+enquanto a simulação está rodando, a próxima transição automática vai falhar (estado inesperado) e
+a simulação simplesmente para por ali — sem crashar nada.
+
+No frontend, `App.jsx` faz *polling* a cada 2s (só enquanto existir algum drone fora do estado
+`idle`) para as telas acompanharem essas mudanças automáticas sem precisar recarregar a página.
 
 ### Despacho manual
 

@@ -4,6 +4,7 @@ const { consumirBateria } = require('../domain/drone');
 const { ordenarFilaDeEntrega } = require('../domain/filaDeEntrega');
 const { ErroDominio } = require('../domain/erroDominio');
 const { droneRepository, pedidoRepository, viagemRepository, obstaculoRepository } = require('../repositories');
+const { agendarProgressoAutomatico } = require('./simulacaoVooService');
 
 // Orquestra o passo principal do desafio: pega pedidos pendentes + drones livres,
 // roda a heurística de alocação (domínio puro, já considerando bateria e obstáculos) e
@@ -35,11 +36,14 @@ async function processarAlocacoes() {
       bateriaPercentual: consumirBateria(drone.bateriaPercentual, viagem.distanciaTotal, drone.alcanceKm),
     });
 
+    const tempoEstimadoHoras = viagem.distanciaTotal / drone.velocidadeKmH;
+    agendarProgressoAutomatico(viagem.droneId, tempoEstimadoHoras);
+
     viagensCriadas.push({
       ...viagemCriada,
       pedidoIds: viagem.pedidoIds,
       pesoTotal: viagem.pesoTotal,
-      tempoEstimadoHoras: viagem.distanciaTotal / drone.velocidadeKmH,
+      tempoEstimadoHoras,
     });
   }
 
@@ -84,11 +88,14 @@ async function despacharManualmente({ droneId, pedidoIds }) {
     bateriaPercentual: consumirBateria(drone.bateriaPercentual, distanciaTotal, drone.alcanceKm),
   });
 
+  const tempoEstimadoHoras = distanciaTotal / drone.velocidadeKmH;
+  agendarProgressoAutomatico(droneId, tempoEstimadoHoras);
+
   return {
     ...viagemCriada,
     pedidoIds: pedidoIdsOrdenados,
     pesoTotal,
-    tempoEstimadoHoras: distanciaTotal / drone.velocidadeKmH,
+    tempoEstimadoHoras,
   };
 }
 

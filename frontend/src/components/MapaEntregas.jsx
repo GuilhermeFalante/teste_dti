@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { RESUMO_ESTADO_DRONE, RESUMO_STATUS_PEDIDO, RESUMO_PRIORIDADE, rotular } from '../domain/rotulos';
 
 const LARGURA = 640;
 const ALTURA = 480;
@@ -62,7 +63,7 @@ function IconeDrone({ drone, rotas, pedidos, projetar, indice }) {
 
   const titulo = (
     <title>
-      {drone.nome} — {drone.estado}
+      {drone.nome} — {rotular(RESUMO_ESTADO_DRONE, drone.estado)}
     </title>
   );
 
@@ -124,7 +125,7 @@ function MapaEntregas({ pedidos, obstaculos, rotas, drones }) {
   return (
     <section className="painel">
       <h2>Mapa</h2>
-      <svg width={LARGURA} height={ALTURA} className="mapa-svg" role="img" aria-label="Mapa das entregas">
+      <svg viewBox={`0 0 ${LARGURA} ${ALTURA}`} className="mapa-svg" role="img" aria-label="Mapa das entregas">
         {obstaculos.map((obstaculo) => {
           const { cx, cy } = projetar(obstaculo.x, obstaculo.y);
           const raioPixels = obstaculo.raioKm * Math.abs(projetar(1, 0).cx - projetar(0, 0).cx);
@@ -143,17 +144,19 @@ function MapaEntregas({ pedidos, obstaculos, rotas, drones }) {
           );
         })}
 
-        {rotas.map((viagem, indice) => {
-          const cor = CORES_ROTA[indice % CORES_ROTA.length];
-          const base = projetar(0, 0);
-          const pontos = [...viagem.pedidos]
-            .sort((a, b) => a.ordemEntrega - b.ordemEntrega)
-            .map((item) => pedidos.find((p) => p.id === item.pedidoId))
-            .filter(Boolean)
-            .map((pedido) => projetar(pedido.clienteX, pedido.clienteY));
-          const caminho = [base, ...pontos, base].map((p) => `${p.cx},${p.cy}`).join(' ');
-          return <polyline key={viagem.id} points={caminho} fill="none" stroke={cor} strokeWidth="1.5" opacity="0.7" />;
-        })}
+        {rotas
+          .filter((viagem) => viagem.status === 'em_andamento')
+          .map((viagem, indice) => {
+            const cor = CORES_ROTA[indice % CORES_ROTA.length];
+            const base = projetar(0, 0);
+            const pontos = [...viagem.pedidos]
+              .sort((a, b) => a.ordemEntrega - b.ordemEntrega)
+              .map((item) => pedidos.find((p) => p.id === item.pedidoId))
+              .filter(Boolean)
+              .map((pedido) => projetar(pedido.clienteX, pedido.clienteY));
+            const caminho = [base, ...pontos, base].map((p) => `${p.cx},${p.cy}`).join(' ');
+            return <polyline key={viagem.id} points={caminho} fill="none" stroke={cor} strokeWidth="1.5" opacity="0.7" />;
+          })}
 
         {(() => {
           const { cx, cy } = projetar(0, 0);
@@ -164,16 +167,19 @@ function MapaEntregas({ pedidos, obstaculos, rotas, drones }) {
           );
         })()}
 
-        {pedidos.map((pedido) => {
-          const { cx, cy } = projetar(pedido.clienteX, pedido.clienteY);
-          return (
-            <circle key={pedido.id} cx={cx} cy={cy} r="5" fill={CORES_PRIORIDADE[pedido.prioridade] ?? '#8f8f96'}>
-              <title>
-                Pedido ({pedido.clienteX}, {pedido.clienteY}) — {pedido.prioridade} — {pedido.status}
-              </title>
-            </circle>
-          );
-        })}
+        {pedidos
+          .filter((pedido) => pedido.status !== 'entregue')
+          .map((pedido) => {
+            const { cx, cy } = projetar(pedido.clienteX, pedido.clienteY);
+            return (
+              <circle key={pedido.id} cx={cx} cy={cy} r="5" fill={CORES_PRIORIDADE[pedido.prioridade] ?? '#8f8f96'}>
+                <title>
+                  Pedido ({pedido.clienteX}, {pedido.clienteY}) — prioridade{' '}
+                  {rotular(RESUMO_PRIORIDADE, pedido.prioridade)} — {rotular(RESUMO_STATUS_PEDIDO, pedido.status)}
+                </title>
+              </circle>
+            );
+          })}
 
         {drones.map((drone, indice) => (
           // A key inclui o estado de propósito: quando o drone muda de estado (ex.: entregando ->

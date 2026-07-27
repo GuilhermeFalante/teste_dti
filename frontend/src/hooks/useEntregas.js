@@ -7,6 +7,8 @@ function useEntregas() {
   const carregarRotas = useCallback(() => api.listarRotas(), []);
   const fila = useRequisicao(carregarFila);
   const rotas = useRequisicao(carregarRotas);
+  const { recarregar: recarregarFila } = fila;
+  const { recarregar: recarregarRotas } = rotas;
 
   const [alocando, setAlocando] = useState(false);
   const [resultadoAlocacao, setResultadoAlocacao] = useState(null);
@@ -18,7 +20,7 @@ function useEntregas() {
     try {
       const resultado = await api.alocarEntregas();
       setResultadoAlocacao(resultado);
-      await Promise.all([fila.recarregar(), rotas.recarregar()]);
+      await Promise.all([recarregarFila(), recarregarRotas()]);
       return resultado;
     } catch (erroCapturado) {
       setErroAlocacao(erroCapturado.message);
@@ -30,9 +32,14 @@ function useEntregas() {
 
   async function despachar(dados) {
     const resultado = await api.despacharEntrega(dados);
-    await Promise.all([fila.recarregar(), rotas.recarregar()]);
+    await Promise.all([recarregarFila(), recarregarRotas()]);
     return resultado;
   }
+
+  const recarregarTudo = useCallback(
+    (opcoes) => Promise.all([recarregarFila(opcoes), recarregarRotas(opcoes)]),
+    [recarregarFila, recarregarRotas],
+  );
 
   return {
     fila: fila.dados,
@@ -41,7 +48,7 @@ function useEntregas() {
     rotas: rotas.dados,
     rotasCarregando: rotas.carregando,
     rotasErro: rotas.erro,
-    recarregarTudo: () => Promise.all([fila.recarregar(), rotas.recarregar()]),
+    recarregarTudo,
     alocando,
     resultadoAlocacao,
     erroAlocacao,

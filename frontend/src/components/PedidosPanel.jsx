@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import MensagemErro from './MensagemErro';
+import Badge from './Badge';
 
 const FORM_INICIAL = { clienteX: '', clienteY: '', pesoKg: '', prioridade: 'media' };
 
@@ -109,8 +110,12 @@ function LinhaPedido({ pedido, removerPedido }) {
         ({pedido.clienteX}, {pedido.clienteY})
       </td>
       <td>{pedido.pesoKg} kg</td>
-      <td>{pedido.prioridade}</td>
-      <td>{pedido.status}</td>
+      <td>
+        <Badge categoria="prioridade" valor={pedido.prioridade} />
+      </td>
+      <td>
+        <Badge categoria="statusPedido" valor={pedido.status} />
+      </td>
       <td>
         {podeRemover ? (
           <button type="button" className="botao-remover" onClick={aoRemover}>

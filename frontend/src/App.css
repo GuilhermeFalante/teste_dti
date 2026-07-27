@@ -1,82 +1,199 @@
 .app {
-  max-width: 960px;
-  margin: 0 auto;
-  padding: 24px;
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
 }
 
-header {
+.barra-lateral {
+  flex: 0 0 260px;
+  width: 260px;
+  min-height: 100vh;
+  padding: 28px 18px;
+  background: var(--bg);
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 28px;
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
 }
 
-header h1 {
-  font-size: 1.5rem;
-  margin: 0;
-}
-
-nav {
+.marca {
   display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 8px;
 }
 
-nav button {
-  padding: 8px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+.marca-icone {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.marca-texto {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text-h);
+}
+
+.barra-lateral nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.barra-lateral nav button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border: 1px solid transparent;
   background: transparent;
   color: var(--text);
   cursor: pointer;
+  font-weight: 500;
+  font-size: 0.94rem;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.1s ease;
 }
 
-nav button.ativa {
+.nav-icone {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.barra-lateral nav button:hover {
+  background: var(--accent-bg);
+}
+
+.barra-lateral nav button.ativa {
   background: var(--accent);
-  border-color: var(--accent);
   color: #fff;
+  box-shadow: 0 4px 14px -6px var(--accent-border);
+}
+
+.conteudo {
+  flex: 1;
+  min-width: 0;
+  padding: 32px 40px 64px;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+@media (max-width: 860px) {
+  .app {
+    flex-direction: column;
+  }
+
+  .barra-lateral {
+    position: static;
+    width: 100%;
+    min-height: auto;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .barra-lateral nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+
+  .conteudo {
+    padding: 24px 20px 48px;
+  }
 }
 
 .painel {
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
+  border-radius: 14px;
+  padding: 24px;
   margin-bottom: 24px;
+  background: var(--bg);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 8px 24px -16px rgba(0, 0, 0, 0.12);
 }
 
 .painel h2 {
-  margin-top: 0;
+  margin: 0 0 16px;
+  font-size: 1.2rem;
+  letter-spacing: -0.01em;
+}
+
+.painel h3 {
+  font-size: 1rem;
+  margin: 24px 0 12px;
+  color: var(--text-h);
 }
 
 .formulario {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
   margin-bottom: 16px;
 }
 
 .formulario input,
 .formulario select {
-  padding: 8px 10px;
+  padding: 9px 12px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
   min-width: 120px;
+  font-size: 0.9rem;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.formulario input:focus,
+.formulario select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg);
 }
 
 button {
-  padding: 8px 14px;
+  padding: 9px 16px;
   border-radius: 8px;
   border: 1px solid var(--accent);
   background: var(--accent);
   color: #fff;
   cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition:
+    filter 0.15s ease,
+    transform 0.1s ease,
+    box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 4px 10px -4px var(--accent-border);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 button:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .acoes {
@@ -100,31 +217,77 @@ button.botao-remover {
 table {
   width: 100%;
   border-collapse: collapse;
+  border-radius: 10px;
+  overflow: hidden;
 }
 
-th,
+th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text);
+  background: var(--accent-bg);
+  border-bottom: 1px solid var(--border);
+}
+
 td {
   text-align: left;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 0.9rem;
+  vertical-align: middle;
+}
+
+tbody tr {
+  transition: background 0.12s ease;
+}
+
+tbody tr:hover {
+  background: var(--accent-bg);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  white-space: nowrap;
 }
 
 .mensagem-erro {
   color: #e5484d;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
+  margin-top: 6px;
 }
 
 .resultado-alocacao {
-  margin: 12px 0;
+  margin: 14px 0;
   font-size: 0.95rem;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--accent-bg);
+}
+
+.resultado-alocacao ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
 }
 
 .mapa-svg {
-  max-width: 100%;
+  width: 100%;
+  max-width: 900px;
+  aspect-ratio: 4 / 3;
   height: auto;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: 14px;
   background: var(--accent-bg);
 }
 
@@ -140,18 +303,29 @@ td {
 
 .cartao {
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px 20px;
+  border-radius: 12px;
+  padding: 18px 22px;
   min-width: 200px;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
+  background: var(--accent-bg);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.cartao:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -12px rgba(0, 0, 0, 0.25);
 }
 
 .cartao-valor {
-  font-size: 1.7rem;
-  font-weight: 600;
+  font-size: 1.8rem;
+  font-weight: 700;
   color: var(--text-h);
+  letter-spacing: -0.02em;
 }
 
 .cartao-rotulo {
@@ -162,7 +336,7 @@ td {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
-  margin-top: 12px;
+  margin-top: 14px;
   font-size: 0.85rem;
 }
 
@@ -187,8 +361,8 @@ td {
 .despacho-manual {
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  padding: 16px 0;
-  margin: 20px 0;
+  padding: 18px 0;
+  margin: 22px 0;
 }
 
 .despacho-manual .formulario {
@@ -198,12 +372,12 @@ td {
 
 .lista-pedidos {
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 180px;
+  gap: 8px;
+  max-height: 200px;
   overflow-y: auto;
   width: 100%;
 }

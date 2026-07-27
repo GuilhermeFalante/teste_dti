@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { PROXIMOS_ESTADOS } from '../domain/estadosDrone';
+import { RESUMO_ESTADO_DRONE, rotular } from '../domain/rotulos';
 import MensagemErro from './MensagemErro';
+import Badge from './Badge';
 
 const FORM_INICIAL = { nome: '', capacidadeKg: '', alcanceKm: '', velocidadeKmH: '' };
 
@@ -164,12 +166,14 @@ function LinhaDrone({ drone, avancarEstadoDrone, removerDrone, aoEditar }) {
       <td>{drone.alcanceKm} km</td>
       <td>{drone.velocidadeKmH} km/h</td>
       <td>{drone.bateriaPercentual.toFixed(1)}%</td>
-      <td>{drone.estado}</td>
+      <td>
+        <Badge categoria="estadoDrone" valor={drone.estado} />
+      </td>
       <td>
         <div className="acoes">
           {proximos.map((proximoEstado) => (
             <button key={proximoEstado} type="button" onClick={() => aoAvancar(proximoEstado)}>
-              → {proximoEstado}
+              → {rotular(RESUMO_ESTADO_DRONE, proximoEstado)}
             </button>
           ))}
           <button type="button" className="botao-editar" onClick={() => aoEditar(drone)}>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useDrones from './hooks/useDrones';
 import usePedidos from './hooks/usePedidos';
 import useObstaculos from './hooks/useObstaculos';
@@ -13,12 +13,12 @@ import DashboardPanel from './components/DashboardPanel';
 import './App.css';
 
 const ABAS = [
-  { chave: 'dashboard', titulo: 'Dashboard' },
-  { chave: 'mapa', titulo: 'Mapa' },
-  { chave: 'entregas', titulo: 'Entregas' },
-  { chave: 'drones', titulo: 'Drones' },
-  { chave: 'pedidos', titulo: 'Pedidos' },
-  { chave: 'obstaculos', titulo: 'Obstáculos' },
+  { chave: 'dashboard', titulo: 'Dashboard', icone: '📊' },
+  { chave: 'mapa', titulo: 'Mapa', icone: '🗺️' },
+  { chave: 'entregas', titulo: 'Entregas', icone: '📦' },
+  { chave: 'drones', titulo: 'Drones', icone: '🚁' },
+  { chave: 'pedidos', titulo: 'Pedidos', icone: '🧾' },
+  { chave: 'obstaculos', titulo: 'Obstáculos', icone: '🚧' },
 ];
 
 function App() {
@@ -30,28 +30,66 @@ function App() {
   const entregas = useEntregas();
   const relatorio = useRelatorio();
 
+  const { recarregar: recarregarDrones } = drones;
+  const { recarregar: recarregarPedidos } = pedidos;
+  const { recarregarTudo: recarregarEntregas } = entregas;
+  const { recarregar: recarregarRelatorio } = relatorio;
+
   async function aoAlocar() {
     await entregas.alocar();
-    await Promise.all([drones.recarregar(), pedidos.recarregar()]);
+    await Promise.all([drones.recarregar(), pedidos.recarregar(), recarregarRelatorio({ silencioso: true })]);
   }
 
   async function aoDespachar(dados) {
     await entregas.despachar(dados);
     setAbaAtiva('mapa');
-    await Promise.all([drones.recarregar(), pedidos.recarregar()]);
+    await Promise.all([drones.recarregar(), pedidos.recarregar(), recarregarRelatorio({ silencioso: true })]);
   }
 
   // Avançar o estado do drone também pode mudar o status dos pedidos da viagem dele
   // (em_rota, entregue) e finalizar a viagem no backend — recarrega tudo para refletir isso.
   async function aoAvancarEstadoDrone(droneId, estado) {
     await drones.avancarEstadoDrone(droneId, estado);
-    await Promise.all([pedidos.recarregar(), entregas.recarregarTudo()]);
+    await Promise.all([pedidos.recarregar(), entregas.recarregarTudo(), recarregarRelatorio({ silencioso: true })]);
   }
+
+  // A fila de entrega usada no despacho manual vem de um endpoint próprio (entregas.fila), não
+  // de pedidos.pedidos — sem isso, um pedido recém-criado/removido não aparecia como opção pra
+  // despachar até alguma outra ação (alocar, despachar, avançar estado) recarregar a fila.
+  async function aoCriarPedido(dados) {
+    await pedidos.criarPedido(dados);
+    await entregas.recarregarTudo();
+  }
+
+  async function aoRemoverPedido(id) {
+    await pedidos.removerPedido(id);
+    await entregas.recarregarTudo();
+  }
+
+  // O ciclo idle→carregando→em_voo→entregando→retornando→idle avança sozinho no backend
+  // (backend/src/services/simulacaoVooService.js), e pode ter sido disparado por qualquer
+  // origem (esta aba, outra aba, outra pessoa) — por isso o polling roda sempre, incondicional:
+  // uma checagem que só recarrega "se já souber que tem drone em movimento" nunca percebe
+  // mudanças que aconteceram fora desta tela, porque depende do próprio dado desatualizado
+  // pra decidir se busca dado novo.
+  useEffect(() => {
+    const intervalo = setInterval(() => {
+      recarregarDrones({ silencioso: true });
+      recarregarPedidos({ silencioso: true });
+      recarregarEntregas({ silencioso: true });
+      recarregarRelatorio({ silencioso: true });
+    }, 2000);
+
+    return () => clearInterval(intervalo);
+  }, [recarregarDrones, recarregarPedidos, recarregarEntregas, recarregarRelatorio]);
 
   return (
     <div className="app">
-      <header>
-        <h1>Simulador de Encomendas em Drone</h1>
+      <aside className="barra-lateral">
+        <div className="marca">
+          <span className="marca-icone">🚁</span>
+          <span className="marca-texto">Simulador de Drones</span>
+        </div>
         <nav>
           {ABAS.map((aba) => (
             <button
@@ -60,13 +98,14 @@ function App() {
               className={aba.chave === abaAtiva ? 'ativa' : ''}
               onClick={() => setAbaAtiva(aba.chave)}
             >
+              <span className="nav-icone">{aba.icone}</span>
               {aba.titulo}
             </button>
           ))}
         </nav>
-      </header>
+      </aside>
 
-      <main>
+      <main className="conteudo">
         {abaAtiva === 'dashboard' && (
           <DashboardPanel
             relatorio={relatorio.relatorio}
@@ -112,8 +151,8 @@ function App() {
             pedidos={pedidos.pedidos}
             carregando={pedidos.carregando}
             erro={pedidos.erro}
-            criarPedido={pedidos.criarPedido}
-            removerPedido={pedidos.removerPedido}
+            criarPedido={aoCriarPedido}
+            removerPedido={aoRemoverPedido}
           />
         )}
         {abaAtiva === 'obstaculos' && (

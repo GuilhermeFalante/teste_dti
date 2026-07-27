@@ -7,17 +7,22 @@ function useRequisicao(carregar) {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
 
-  const recarregar = useCallback(async () => {
-    setCarregando(true);
-    setErro(null);
-    try {
-      setDados(await carregar());
-    } catch (erroCapturado) {
-      setErro(erroCapturado.message);
-    } finally {
-      setCarregando(false);
-    }
-  }, [carregar]);
+  // silencioso: true evita ligar/desligar o "carregando" — usado no polling em segundo plano,
+  // pra não ficar piscando "Carregando..." a cada rodada enquanto os dados já estão na tela.
+  const recarregar = useCallback(
+    async ({ silencioso = false } = {}) => {
+      if (!silencioso) setCarregando(true);
+      setErro(null);
+      try {
+        setDados(await carregar());
+      } catch (erroCapturado) {
+        setErro(erroCapturado.message);
+      } finally {
+        if (!silencioso) setCarregando(false);
+      }
+    },
+    [carregar],
+  );
 
   useEffect(() => {
     recarregar();

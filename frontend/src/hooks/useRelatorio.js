@@ -6,15 +6,16 @@ function useRelatorio() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
 
-  const recarregar = useCallback(async () => {
-    setCarregando(true);
+  // silencioso: true evita ligar/desligar o "carregando" — usado no polling em segundo plano.
+  const recarregar = useCallback(async ({ silencioso = false } = {}) => {
+    if (!silencioso) setCarregando(true);
     setErro(null);
     try {
       setRelatorio(await api.buscarRelatorio());
     } catch (erroCapturado) {
       setErro(erroCapturado.message);
     } finally {
-      setCarregando(false);
+      if (!silencioso) setCarregando(false);
     }
   }, []);
 
