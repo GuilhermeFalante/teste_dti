@@ -98,7 +98,7 @@ describe('alocarPedidos', () => {
     ]);
   });
 
-  test('marca como não alocado um pedido fora do alcance de todos os drones', () => {
+  test('marca como não alocado um pedido fora do alcance de todos os drones, sem mencionar obstáculo', () => {
     const pedidos = [pedido({ id: 'p1', clienteX: 100, clienteY: 100, pesoKg: 1 })];
     const drones = [drone({ id: 'd1', capacidadeKg: 10, alcanceKm: 5 })];
 
@@ -106,6 +106,45 @@ describe('alocarPedidos', () => {
 
     expect(resultado.viagens).toHaveLength(0);
     expect(resultado.naoAlocados[0].pedidoId).toBe('p1');
+    expect(resultado.naoAlocados[0].motivo).toContain('excede o alcance disponível');
+    expect(resultado.naoAlocados[0].motivo).not.toContain('obstáculo');
+  });
+
+  test('motivo da rejeição menciona obstáculo quando ele é o responsável por estourar o alcance', () => {
+    const pedidos = [pedido({ id: 'p1', clienteX: 10, clienteY: 0, pesoKg: 1 })];
+    const drones = [drone({ id: 'd1', capacidadeKg: 10, alcanceKm: 20.2 })]; // reto (ida e volta): 20km, cabe
+    const obstaculos = [{ x: 5, y: 0, raioKm: 1 }]; // pequeno o bastante pra contornar, mas já estoura o alcance
+
+    const resultado = alocarPedidos(pedidos, drones, obstaculos);
+
+    expect(resultado.viagens).toHaveLength(0);
+    expect(resultado.naoAlocados[0].motivo).toContain('zona de exclusão aérea');
+  });
+
+  test('motivo da rejeição não quebra (nem mostra "Infinitykm") quando o cliente fica cercado por obstáculo', () => {
+    const pedidos = [pedido({ id: 'p1', clienteX: 8, clienteY: 0, pesoKg: 1 })];
+    const drones = [drone({ id: 'd1', capacidadeKg: 10, alcanceKm: 100 })];
+    const obstaculos = [{ x: 8, y: 0, raioKm: 2 }]; // obstáculo bem em cima do cliente: nenhuma rota chega até ele
+
+    const resultado = alocarPedidos(pedidos, drones, obstaculos);
+
+    expect(resultado.viagens).toHaveLength(0);
+    expect(resultado.naoAlocados[0].motivo).not.toContain('Infinity');
+    expect(resultado.naoAlocados[0].motivo).toContain('não existe nenhuma rota possível');
+  });
+
+  test('motivo da rejeição avisa quando existe drone capaz mas todos já foram usados na rodada', () => {
+    const pedidos = [
+      pedido({ id: 'p1', clienteX: 1, clienteY: 0, pesoKg: 1, prioridade: 'alta' }),
+      pedido({ id: 'p2', clienteX: 2, clienteY: 0, pesoKg: 1, prioridade: 'alta' }),
+    ];
+    const drones = [drone({ id: 'd1', capacidadeKg: 1, alcanceKm: 10 })]; // só 1 drone, capacidade justa pra 1 pedido por vez
+
+    const resultado = alocarPedidos(pedidos, drones);
+
+    expect(resultado.viagens).toHaveLength(1);
+    expect(resultado.naoAlocados).toHaveLength(1);
+    expect(resultado.naoAlocados[0].motivo).toContain('já foram alocados para outra entrega nesta rodada');
   });
 
   test('sem drones disponíveis, todos os pedidos ficam não alocados', () => {

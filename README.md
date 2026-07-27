@@ -165,8 +165,15 @@ Implementada em `backend/src/domain/alocacaoService.js`:
    peso total não ultrapassar a capacidade e a rota recalculada não ultrapassar o alcance do drone.
 3. Se não couber em nenhuma viagem aberta, abre-se uma viagem nova no menor drone (por capacidade)
    que suporte o pedido sozinho — drones maiores ficam reservados para pedidos mais pesados.
-4. Pedidos que não cabem em nenhum drone disponível (peso ou distância acima do que qualquer drone
-   suporta) voltam em `naoAlocados` com o motivo.
+4. Pedidos que não cabem em nenhum drone disponível voltam em `naoAlocados` com um motivo
+   específico:
+   - peso acima da capacidade do maior drone disponível;
+   - distância acima do alcance de qualquer drone — e, quando um obstáculo é o responsável por
+     empurrar a rota além do alcance, a mensagem cita isso explicitamente (com a distância antes/
+     depois do desvio);
+   - zonas de exclusão aérea que cercam o cliente por completo (nenhuma rota possível até ele);
+   - ou, quando existe drone capaz mas nenhum sobrou (todos já usados por outros pedidos na mesma
+     rodada), um aviso para tentar de novo depois ou despachar manualmente.
 5. A distância de uma viagem com múltiplos pedidos é calculada com uma heurística de vizinho mais
    próximo (não é TSP ótimo, mas evita rotas em zig-zag óbvias) partindo e retornando à base (0,0).
 

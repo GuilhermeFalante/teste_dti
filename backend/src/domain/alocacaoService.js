@@ -53,7 +53,7 @@ function alocarPedidos(pedidos, drones, obstaculos = [], base = BASE_PADRAO) {
 
     naoAlocados.push({
       pedido,
-      motivo: 'Nenhum drone disponível suporta o peso e/ou o alcance (considerando a bateria atual) necessário para este pedido.',
+      motivo: construirMotivoRejeicao(pedido, ponto, dronesDoMenorParaOMaior, obstaculos, base),
     });
   });
 
@@ -66,6 +66,60 @@ function alocarPedidos(pedidos, drones, obstaculos = [], base = BASE_PADRAO) {
     })),
     naoAlocados: naoAlocados.map((n) => ({ pedidoId: n.pedido.id, motivo: n.motivo })),
   };
+}
+
+// Explica por que um pedido não coube em nenhuma viagem, distinguindo as causas possíveis:
+// peso acima da capacidade de qualquer drone, distância acima do alcance de qualquer drone
+// (destacando quando um obstáculo é o motivo de a rota ter ficado mais longa), ou — quando
+// existe drone capaz — todos já terem sido usados nesta mesma rodada de alocação.
+function construirMotivoRejeicao(pedido, ponto, dronesDoMenorParaOMaior, obstaculos, base) {
+  if (dronesDoMenorParaOMaior.length === 0) {
+    return 'Nenhum drone disponível no momento.';
+  }
+
+  const distanciaSemObstaculos = calcularDistanciaRota([ponto], base, []);
+  const distanciaComObstaculos = calcularDistanciaRota([ponto], base, obstaculos);
+  const obstaculoAtrapalhou = distanciaComObstaculos > distanciaSemObstaculos + 0.001;
+
+  const capazes = dronesDoMenorParaOMaior.filter(
+    (drone) => pedido.pesoKg <= drone.capacidadeKg && distanciaComObstaculos <= alcanceEfetivoKm(drone),
+  );
+
+  if (capazes.length > 0) {
+    return (
+      'Existe drone com capacidade e alcance suficientes para este pedido, mas todos já foram ' +
+      'alocados para outra entrega nesta rodada — tente rodar a alocação de novo depois (quando ' +
+      'algum drone estiver livre) ou despache este pedido manualmente.'
+    );
+  }
+
+  const motivos = [];
+  const maiorCapacidadeKg = Math.max(...dronesDoMenorParaOMaior.map((drone) => drone.capacidadeKg));
+  if (pedido.pesoKg > maiorCapacidadeKg) {
+    motivos.push(`o peso do pacote (${pedido.pesoKg}kg) excede a capacidade do maior drone disponível (${maiorCapacidadeKg}kg)`);
+  }
+
+  const maiorAlcanceEfetivoKm = Math.max(...dronesDoMenorParaOMaior.map((drone) => alcanceEfetivoKm(drone)));
+  if (distanciaComObstaculos > maiorAlcanceEfetivoKm) {
+    if (!Number.isFinite(distanciaComObstaculos)) {
+      motivos.push(
+        'zonas de exclusão aérea cercam o cliente por completo — não existe nenhuma rota possível até ele',
+      );
+    } else if (obstaculoAtrapalhou) {
+      motivos.push(
+        `a rota até o cliente precisa contornar uma zona de exclusão aérea (obstáculo), o que aumenta a ` +
+          `distância de ${distanciaSemObstaculos.toFixed(2)}km para ${distanciaComObstaculos.toFixed(2)}km — acima ` +
+          'do alcance disponível (considerando a bateria atual) de qualquer drone',
+      );
+    } else {
+      motivos.push(
+        `a distância até o cliente (${distanciaComObstaculos.toFixed(2)}km) excede o alcance disponível ` +
+          '(considerando a bateria atual) de qualquer drone',
+      );
+    }
+  }
+
+  return `Nenhum drone suporta este pedido: ${motivos.join('; ')}.`;
 }
 
 function encontrarViagemComEspaco(viagens, pedido, ponto, base, obstaculos) {
